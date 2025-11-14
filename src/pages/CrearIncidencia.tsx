@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const CrearIncidencia = () => {
@@ -26,8 +26,16 @@ const CrearIncidencia = () => {
     area: "",
     servicio: "",
     tipo: "",
+    subtipo: "",
     prioridad: "",
+    piso: "",
+    habitacion: "",
+    cama: "",
+    equipo: "",
+    pacienteId: "",
   });
+
+  const [archivos, setArchivos] = useState<File[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +54,16 @@ const CrearIncidencia = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setArchivos(Array.from(e.target.files));
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setArchivos((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -143,17 +161,146 @@ const CrearIncidencia = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="prioridad">Prioridad *</Label>
-                  <Select value={formData.prioridad} onValueChange={(value) => handleChange("prioridad", value)} required>
-                    <SelectTrigger id="prioridad">
-                      <SelectValue placeholder="Selecciona la prioridad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="alta">Alta - Impacto crítico en atención</SelectItem>
-                      <SelectItem value="media">Media - Impacto moderado</SelectItem>
-                      <SelectItem value="baja">Baja - Impacto mínimo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="subtipo">Subtipo</Label>
+                  <Input
+                    id="subtipo"
+                    placeholder="Ej: Hardware, software..."
+                    value={formData.subtipo}
+                    onChange={(e) => handleChange("subtipo", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="prioridad">Prioridad *</Label>
+                <Select value={formData.prioridad} onValueChange={(value) => handleChange("prioridad", value)} required>
+                  <SelectTrigger id="prioridad">
+                    <SelectValue placeholder="Selecciona la prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="critica">Crítica - Riesgo inmediato para pacientes</SelectItem>
+                    <SelectItem value="alta">Alta - Impacto crítico en atención</SelectItem>
+                    <SelectItem value="media">Media - Impacto moderado</SelectItem>
+                    <SelectItem value="baja">Baja - Impacto mínimo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="pt-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Ubicación / Contexto</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="piso">Piso</Label>
+                    <Input
+                      id="piso"
+                      placeholder="Ej: 3er piso"
+                      value={formData.piso}
+                      onChange={(e) => handleChange("piso", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="habitacion">Habitación</Label>
+                    <Input
+                      id="habitacion"
+                      placeholder="Ej: 302"
+                      value={formData.habitacion}
+                      onChange={(e) => handleChange("habitacion", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cama">Cama</Label>
+                    <Input
+                      id="cama"
+                      placeholder="Ej: Cama A"
+                      value={formData.cama}
+                      onChange={(e) => handleChange("cama", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="equipo">Equipo implicado</Label>
+                    <Input
+                      id="equipo"
+                      placeholder="Ej: Monitor cardíaco #45"
+                      value={formData.equipo}
+                      onChange={(e) => handleChange("equipo", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Información clínica (opcional)</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="pacienteId">ID de paciente / Código</Label>
+                  <Input
+                    id="pacienteId"
+                    placeholder="Ingresa el código del paciente si aplica"
+                    value={formData.pacienteId}
+                    onChange={(e) => handleChange("pacienteId", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Solo código o identificador. No incluir información sensible.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Adjuntos</h3>
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-border rounded-lg p-6">
+                    <input
+                      type="file"
+                      id="archivos"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx"
+                    />
+                    <label
+                      htmlFor="archivos"
+                      className="flex flex-col items-center justify-center cursor-pointer"
+                    >
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Click para subir archivos o arrastra aquí
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Imágenes, PDF, documentos (máx. 10MB por archivo)
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {archivos.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">Archivos seleccionados:</p>
+                      {archivos.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm text-foreground truncate">{file.name}</span>
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              ({(file.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
