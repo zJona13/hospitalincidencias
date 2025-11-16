@@ -6,8 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Incidencias from "./pages/Incidencias";
+import MisIncidencias from "./pages/MisIncidencias";
 import IncidenciaDetalle from "./pages/IncidenciaDetalle";
 import CrearIncidencia from "./pages/CrearIncidencia";
+import Reportes from "./pages/Reportes";
 import NotFound from "./pages/NotFound";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 
@@ -28,8 +30,8 @@ const App = () => (
             <Route path="/incidencias" element={<Incidencias />} />
             <Route path="/incidencias/crear" element={<CrearIncidencia />} />
             <Route path="/incidencias/:codigo" element={<IncidenciaDetalle />} />
-            <Route path="/incidencias/mis-incidencias" element={<Incidencias />} />
-            <Route path="/reportes" element={<Dashboard />} />
+            <Route path="/incidencias/mis-incidencias" element={<MisIncidencias />} />
+            <Route path="/reportes" element={<Reportes />} />
             <Route path="/admin/usuarios" element={<Dashboard />} />
             <Route path="/admin/areas" element={<Dashboard />} />
             <Route path="/admin/tipos" element={<Dashboard />} />
