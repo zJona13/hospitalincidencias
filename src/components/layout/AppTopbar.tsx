@@ -76,6 +76,16 @@ export function AppTopbar() {
                   <p className="text-xs text-muted-foreground mt-1">Hace 2 horas</p>
                 </div>
               </div>
+              <DropdownMenuSeparator />
+              <div className="p-2">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-center text-sm"
+                  onClick={() => navigate("/notificaciones")}
+                >
+                  Ver todas las notificaciones
+                </Button>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -95,7 +105,7 @@ export function AppTopbar() {
             <DropdownMenuContent align="end" className="w-56 bg-popover">
               <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/perfil")}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Perfil</span>
               </DropdownMenuItem>
