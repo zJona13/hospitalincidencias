@@ -11,6 +11,12 @@ import IncidenciaDetalle from "./pages/IncidenciaDetalle";
 import CrearIncidencia from "./pages/CrearIncidencia";
 import Reportes from "./pages/Reportes";
 import NotFound from "./pages/NotFound";
+import Notificaciones from "./pages/Notificaciones";
+import Perfil from "./pages/Perfil";
+import Usuarios from "./pages/admin/Usuarios";
+import Areas from "./pages/admin/Areas";
+import TiposIncidencias from "./pages/admin/TiposIncidencias";
+import Prioridades from "./pages/admin/Prioridades";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 
 const queryClient = new QueryClient();
@@ -32,10 +38,12 @@ const App = () => (
             <Route path="/incidencias/:codigo" element={<IncidenciaDetalle />} />
             <Route path="/incidencias/mis-incidencias" element={<MisIncidencias />} />
             <Route path="/reportes" element={<Reportes />} />
-            <Route path="/admin/usuarios" element={<Dashboard />} />
-            <Route path="/admin/areas" element={<Dashboard />} />
-            <Route path="/admin/tipos" element={<Dashboard />} />
-            <Route path="/admin/prioridades" element={<Dashboard />} />
+            <Route path="/notificaciones" element={<Notificaciones />} />
+            <Route path="/perfil" element={<Perfil />} />
+            <Route path="/admin/usuarios" element={<Usuarios />} />
+            <Route path="/admin/areas" element={<Areas />} />
+            <Route path="/admin/tipos" element={<TiposIncidencias />} />
+            <Route path="/admin/prioridades" element={<Prioridades />} />
             <Route path="/admin/configuracion" element={<Dashboard />} />
           </Route>
           
