@@ -3,7 +3,7 @@ import { pool } from '../db.js';
 /**
  * Registra un evento en el historial de una incidencia
  * @param {number} incidenciaId - ID de la incidencia
- * @param {string} tipoEvento - Tipo de evento (creacion, asignacion, estado, comentario, adjunto, prioridad, reasignacion)
+ * @param {string} tipoEvento - Tipo de evento (creacion, asignacion, estado, comentario, adjunto, prioridad, reasignacion, resolucion)
  * @param {number} usuarioId - ID del usuario que realizó la acción
  * @param {string} descripcion - Descripción del evento
  * @param {string|null} estadoPrevio - Estado previo (si aplica)

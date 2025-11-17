@@ -10,6 +10,7 @@ export interface User {
   nombre: string;
   email: string;
   rol: string;
+  tipo_admin?: 'ti' | 'general' | null;
   area?: {
     id: number;
     codigo: string;

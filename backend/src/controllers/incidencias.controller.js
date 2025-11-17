@@ -235,6 +235,43 @@ export const obtenerIncidencia = async (req, res) => {
         cierre: inc.fecha_cierre
       }
     };
+
+    // Obtener resolución si existe
+    const [resoluciones] = await pool.execute(
+      `SELECT r.*, 
+              u.id as resuelto_por_id, u.nombre as resuelto_por_nombre, u.email as resuelto_por_email,
+              v.id as validado_por_id, v.nombre as validado_por_nombre, v.email as validado_por_email
+       FROM resoluciones_incidencias r
+       INNER JOIN usuarios u ON r.resuelto_por_id = u.id
+       LEFT JOIN usuarios v ON r.validado_por_id = v.id
+       WHERE r.incidencia_id = ?
+       ORDER BY r.fecha_creacion DESC
+       LIMIT 1`,
+      [inc.id]
+    );
+
+    if (resoluciones.length > 0) {
+      const res = resoluciones[0];
+      incidencia.resolucion = {
+        id: res.id,
+        solucion_aplicada: res.solucion_aplicada,
+        pasos_seguidos: res.pasos_seguidos,
+        recursos_utilizados: res.recursos_utilizados,
+        tiempo_invertido_minutos: res.tiempo_invertido_minutos,
+        fecha_resolucion: res.fecha_resolucion,
+        resuelto_por: {
+          id: res.resuelto_por_id,
+          nombre: res.resuelto_por_nombre,
+          email: res.resuelto_por_email
+        },
+        validado_por: res.validado_por_id ? {
+          id: res.validado_por_id,
+          nombre: res.validado_por_nombre,
+          email: res.validado_por_email
+        } : null,
+        fecha_validacion: res.fecha_validacion
+      };
+    }
     
     res.json({
       status: 'success',
@@ -324,7 +361,7 @@ export const crearIncidencia = async (req, res) => {
       const [usuarios] = await pool.execute('SELECT nombre FROM usuarios WHERE id = ?', [userId]);
       const nombreUsuario = usuarios[0]?.nombre || 'Usuario';
       
-      await notificarAsignacion(responsable_id, codigo, titulo);
+      await notificarAsignacion(responsable_id, codigo, titulo, incidenciaId);
       
       await registrarHistorial(
         incidenciaId,
@@ -515,7 +552,7 @@ export const cambiarEstado = async (req, res) => {
     }
     
     for (const usuarioId of usuariosNotificar) {
-      await notificarCambioEstado(usuarioId, codigo, estadoAnterior, estado);
+      await notificarCambioEstado(usuarioId, codigo, estadoAnterior, estado, incidencia.id);
     }
     
     res.json({
@@ -685,7 +722,7 @@ export const reasignar = async (req, res) => {
     );
     
     // Notificar al nuevo responsable
-    await notificarAsignacion(responsable_id, codigo, incidencia.titulo);
+    await notificarAsignacion(responsable_id, codigo, incidencia.titulo, incidencia.id);
     
     res.json({
       status: 'success',
@@ -799,6 +836,145 @@ export const misIncidencias = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Error al obtener incidencias'
+    });
+  }
+};
+
+// Resolver incidencia con detalles completos
+export const resolverIncidencia = async (req, res) => {
+  try {
+    const { codigo } = req.params;
+    const { solucion_aplicada, pasos_seguidos, recursos_utilizados, tiempo_invertido_minutos } = req.body;
+    const userId = req.user.id;
+
+    // Validar campos requeridos
+    if (!solucion_aplicada || !pasos_seguidos || !tiempo_invertido_minutos) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Los campos solucion_aplicada, pasos_seguidos y tiempo_invertido_minutos son requeridos'
+      });
+    }
+
+    // Verificar que la incidencia existe
+    const [incidencias] = await pool.execute(
+      'SELECT id, estado, responsable_id FROM incidencias WHERE codigo = ?',
+      [codigo]
+    );
+
+    if (incidencias.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Incidencia no encontrada'
+      });
+    }
+
+    const incidencia = incidencias[0];
+
+    // Verificar permisos: solo el responsable o admin TI pueden resolver
+    const esResponsable = incidencia.responsable_id === userId;
+    const esAdminTI = req.user.rol === 'administrador' && req.user.tipo_admin === 'ti';
+
+    if (!esResponsable && !esAdminTI) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Solo el responsable asignado o un administrador TI pueden resolver esta incidencia'
+      });
+    }
+
+    // Verificar que no esté ya resuelta
+    if (incidencia.estado === 'resuelta' || incidencia.estado === 'cerrada') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'La incidencia ya está resuelta o cerrada'
+      });
+    }
+
+    // Iniciar transacción
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Guardar resolución
+      const [result] = await connection.execute(
+        `INSERT INTO resoluciones_incidencias 
+         (incidencia_id, solucion_aplicada, pasos_seguidos, recursos_utilizados, 
+          tiempo_invertido_minutos, resuelto_por_id, fecha_resolucion)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          incidencia.id,
+          solucion_aplicada,
+          pasos_seguidos,
+          recursos_utilizados || null,
+          tiempo_invertido_minutos,
+          userId
+        ]
+      );
+
+      const resolucionId = result.insertId;
+
+      // Actualizar estado de la incidencia
+      await connection.execute(
+        `UPDATE incidencias 
+         SET estado = 'resuelta', 
+             fecha_resolucion = NOW(),
+             fecha_actualizacion = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [incidencia.id]
+      );
+
+      // Registrar en historial
+      await registrarHistorial(
+        incidencia.id,
+        'resolucion',
+        userId,
+        `Incidencia resuelta. Solución: ${solucion_aplicada.substring(0, 100)}...`,
+        incidencia.estado,
+        'resuelta'
+      );
+
+      // Commit transacción
+      await connection.commit();
+
+      // Obtener resolución completa
+      const [resoluciones] = await pool.execute(
+        `SELECT r.*, 
+                u.id as resuelto_por_id, u.nombre as resuelto_por_nombre, u.email as resuelto_por_email
+         FROM resoluciones_incidencias r
+         INNER JOIN usuarios u ON r.resuelto_por_id = u.id
+         WHERE r.id = ?`,
+        [resolucionId]
+      );
+
+      res.json({
+        status: 'success',
+        message: 'Incidencia resuelta exitosamente',
+        data: {
+          resolucion: {
+            id: resoluciones[0].id,
+            solucion_aplicada: resoluciones[0].solucion_aplicada,
+            pasos_seguidos: resoluciones[0].pasos_seguidos,
+            recursos_utilizados: resoluciones[0].recursos_utilizados,
+            tiempo_invertido_minutos: resoluciones[0].tiempo_invertido_minutos,
+            fecha_resolucion: resoluciones[0].fecha_resolucion,
+            resuelto_por: {
+              id: resoluciones[0].resuelto_por_id,
+              nombre: resoluciones[0].resuelto_por_nombre,
+              email: resoluciones[0].resuelto_por_email
+            }
+          }
+        }
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Error al resolver incidencia:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al resolver incidencia'
     });
   }
 };

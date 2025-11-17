@@ -43,3 +43,31 @@ export const requireRole = (...roles) => {
     next();
   };
 };
+
+// Middleware para verificar tipo específico de administrador
+export const requireAdminType = (tipoAdmin) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'No autenticado'
+      });
+    }
+    
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Solo administradores pueden realizar esta acción'
+      });
+    }
+    
+    if (req.user.tipo_admin !== tipoAdmin) {
+      return res.status(403).json({
+        status: 'error',
+        message: `Solo administradores de tipo '${tipoAdmin}' pueden realizar esta acción`
+      });
+    }
+    
+    next();
+  };
+};

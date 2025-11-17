@@ -17,6 +17,10 @@ import Usuarios from "./pages/admin/Usuarios";
 import Areas from "./pages/admin/Areas";
 import TiposIncidencias from "./pages/admin/TiposIncidencias";
 import Prioridades from "./pages/admin/Prioridades";
+import Analiticas from "./pages/admin/Analiticas";
+import AsignacionIncidencias from "./pages/admin/AsignacionIncidencias";
+import EstadisticasAsignaciones from "./pages/admin/EstadisticasAsignaciones";
+import Configuracion from "./pages/admin/Configuracion";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 
 const queryClient = new QueryClient();
@@ -43,7 +47,10 @@ const App = () => (
           <Route path="/admin/areas" element={<Areas />} />
           <Route path="/admin/tipos" element={<TiposIncidencias />} />
           <Route path="/admin/prioridades" element={<Prioridades />} />
-          <Route path="/admin/configuracion" element={<Dashboard />} />
+          <Route path="/admin/configuracion" element={<Configuracion />} />
+          <Route path="/admin/analiticas" element={<Analiticas />} />
+          <Route path="/admin-ti/asignacion" element={<AsignacionIncidencias />} />
+          <Route path="/admin-ti/estadisticas" element={<EstadisticasAsignaciones />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

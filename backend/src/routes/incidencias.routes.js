@@ -7,7 +7,8 @@ import {
   cambiarEstado,
   cambiarPrioridad,
   reasignar,
-  misIncidencias
+  misIncidencias,
+  resolverIncidencia
 } from '../controllers/incidencias.controller.js';
 import { auth } from '../auth.js';
 
@@ -24,6 +25,7 @@ router.put('/:codigo', actualizarIncidencia);
 router.patch('/:codigo/estado', cambiarEstado);
 router.patch('/:codigo/prioridad', cambiarPrioridad);
 router.patch('/:codigo/reasignar', reasignar);
+router.post('/:codigo/resolver', resolverIncidencia);
 
 export default router;
 

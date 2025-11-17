@@ -1,7 +1,7 @@
-import { Clock, User, MessageSquare, FileText, CheckCircle, AlertCircle, PlayCircle, PauseCircle } from "lucide-react";
+import { Clock, User, MessageSquare, FileText, CheckCircle, AlertCircle, PlayCircle, PauseCircle, Flag, UserCheck } from "lucide-react";
 
 interface TimelineEvent {
-  tipo: "creacion" | "asignacion" | "estado" | "comentario" | "adjunto";
+  tipo: "creacion" | "asignacion" | "estado" | "comentario" | "adjunto" | "prioridad" | "reasignacion" | "resolucion";
   fecha: string;
   usuario: string;
   detalle: string;
@@ -25,6 +25,12 @@ const getEventIcon = (tipo: string) => {
       return <MessageSquare className="h-4 w-4" />;
     case "adjunto":
       return <FileText className="h-4 w-4" />;
+    case "prioridad":
+      return <Flag className="h-4 w-4" />;
+    case "reasignacion":
+      return <UserCheck className="h-4 w-4" />;
+    case "resolucion":
+      return <CheckCircle className="h-4 w-4" />;
     default:
       return <Clock className="h-4 w-4" />;
   }
@@ -33,17 +39,23 @@ const getEventIcon = (tipo: string) => {
 const getEventColor = (tipo: string) => {
   switch (tipo) {
     case "creacion":
-      return "text-primary";
+      return "text-primary border-primary";
     case "asignacion":
-      return "text-blue-500";
+      return "text-blue-500 border-blue-500";
     case "estado":
-      return "text-green-500";
+      return "text-green-500 border-green-500";
     case "comentario":
-      return "text-purple-500";
+      return "text-purple-500 border-purple-500";
     case "adjunto":
-      return "text-orange-500";
+      return "text-orange-500 border-orange-500";
+    case "prioridad":
+      return "text-yellow-500 border-yellow-500";
+    case "reasignacion":
+      return "text-cyan-500 border-cyan-500";
+    case "resolucion":
+      return "text-emerald-600 border-emerald-600";
     default:
-      return "text-muted-foreground";
+      return "text-muted-foreground border-muted-foreground";
   }
 };
 

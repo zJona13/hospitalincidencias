@@ -54,6 +54,25 @@ export interface Incidencia {
     resolucion?: string;
     cierre?: string;
   };
+  resolucion?: {
+    id: number;
+    solucion_aplicada: string;
+    pasos_seguidos: string;
+    recursos_utilizados?: string | null;
+    tiempo_invertido_minutos: number;
+    fecha_resolucion: string;
+    resuelto_por: {
+      id: number;
+      nombre: string;
+      email: string;
+    };
+    validado_por?: {
+      id: number;
+      nombre: string;
+      email: string;
+    } | null;
+    fecha_validacion?: string | null;
+  };
 }
 
 export interface CrearIncidenciaData {
@@ -117,6 +136,15 @@ export const incidenciasService = {
     const params = { tipo, ...filtros };
     const response = await api.get('/incidencias/mis-incidencias', { params });
     return response.data.data;
+  },
+
+  async resolver(codigo: string, datosResolucion: {
+    solucion_aplicada: string;
+    pasos_seguidos: string;
+    recursos_utilizados?: string;
+    tiempo_invertido_minutos: number;
+  }): Promise<void> {
+    await api.post(`/incidencias/${codigo}/resolver`, datosResolucion);
   },
 };
 

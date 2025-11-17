@@ -51,39 +51,87 @@ export const crearNotificaciones = async (usuarioIds, tipo, titulo, mensaje, inc
 /**
  * Crea notificación de asignación de incidencia
  */
-export const notificarAsignacion = async (usuarioId, incidenciaCodigo, incidenciaTitulo) => {
+export const notificarAsignacion = async (usuarioId, incidenciaCodigo, incidenciaTitulo, incidenciaId = null) => {
+  // Si no se proporciona incidenciaId, buscarlo por código
+  let idIncidencia = incidenciaId;
+  if (!idIncidencia) {
+    try {
+      const [incidencias] = await pool.execute(
+        'SELECT id FROM incidencias WHERE codigo = ? LIMIT 1',
+        [incidenciaCodigo]
+      );
+      if (incidencias.length > 0) {
+        idIncidencia = incidencias[0].id;
+      }
+    } catch (error) {
+      console.error('Error al buscar incidencia por código:', error);
+    }
+  }
+  
   await crearNotificacion(
     usuarioId,
     'asignacion',
     'Nueva incidencia asignada',
     `Se te ha asignado la incidencia ${incidenciaCodigo}: ${incidenciaTitulo}`,
-    null // incidenciaId se actualizará después
+    idIncidencia
   );
 };
 
 /**
  * Crea notificación de cambio de estado
  */
-export const notificarCambioEstado = async (usuarioId, incidenciaCodigo, estadoAnterior, estadoNuevo) => {
+export const notificarCambioEstado = async (usuarioId, incidenciaCodigo, estadoAnterior, estadoNuevo, incidenciaId = null) => {
+  // Si no se proporciona incidenciaId, buscarlo por código
+  let idIncidencia = incidenciaId;
+  if (!idIncidencia) {
+    try {
+      const [incidencias] = await pool.execute(
+        'SELECT id FROM incidencias WHERE codigo = ? LIMIT 1',
+        [incidenciaCodigo]
+      );
+      if (incidencias.length > 0) {
+        idIncidencia = incidencias[0].id;
+      }
+    } catch (error) {
+      console.error('Error al buscar incidencia por código:', error);
+    }
+  }
+  
   await crearNotificacion(
     usuarioId,
     'estado',
     'Estado de incidencia actualizado',
     `La incidencia ${incidenciaCodigo} cambió de "${estadoAnterior}" a "${estadoNuevo}"`,
-    null
+    idIncidencia
   );
 };
 
 /**
  * Crea notificación de nuevo comentario
  */
-export const notificarComentario = async (usuarioId, incidenciaCodigo, autorNombre) => {
+export const notificarComentario = async (usuarioId, incidenciaCodigo, autorNombre, incidenciaId = null) => {
+  // Si no se proporciona incidenciaId, buscarlo por código
+  let idIncidencia = incidenciaId;
+  if (!idIncidencia) {
+    try {
+      const [incidencias] = await pool.execute(
+        'SELECT id FROM incidencias WHERE codigo = ? LIMIT 1',
+        [incidenciaCodigo]
+      );
+      if (incidencias.length > 0) {
+        idIncidencia = incidencias[0].id;
+      }
+    } catch (error) {
+      console.error('Error al buscar incidencia por código:', error);
+    }
+  }
+  
   await crearNotificacion(
     usuarioId,
     'comentario',
     'Nuevo comentario',
     `${autorNombre} comentó en la incidencia ${incidenciaCodigo}`,
-    null
+    idIncidencia
   );
 };
 

@@ -5,26 +5,36 @@ export const listarTipos = async (req, res) => {
   try {
     const { activo, categoria } = req.query;
     
-    let query = 'SELECT * FROM tipos_incidencias WHERE 1=1';
+    let query = `
+      SELECT t.*, 
+             (SELECT COUNT(*) FROM subtipos_incidencias WHERE tipo_incidencia_id = t.id AND activo = TRUE) as subtipos_count
+      FROM tipos_incidencias t
+      WHERE 1=1
+    `;
     const params = [];
     
     if (activo !== undefined) {
-      query += ' AND activo = ?';
+      query += ' AND t.activo = ?';
       params.push(activo === 'true' || activo === true);
     }
     
     if (categoria) {
-      query += ' AND categoria = ?';
+      query += ' AND t.categoria = ?';
       params.push(categoria);
     }
     
-    query += ' ORDER BY nombre';
+    query += ' ORDER BY t.nombre';
     
     const [tipos] = await pool.execute(query, params);
     
+    const tiposFormateados = tipos.map(t => ({
+      ...t,
+      subtipos: t.subtipos_count || 0
+    }));
+    
     res.json({
       status: 'success',
-      data: tipos
+      data: tiposFormateados
     });
   } catch (error) {
     console.error('Error al listar tipos:', error);

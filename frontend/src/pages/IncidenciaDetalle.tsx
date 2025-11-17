@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, Edit, Clock, User, Building2, Flag, FileText, MessageSquare, Download, UserCheck } from "lucide-react";
+import { ArrowLeft, Edit, Clock, User, Building2, Flag, FileText, MessageSquare, Download, UserCheck, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { Timeline } from "@/components/incidencia/Timeline";
+import { FormularioResolucion } from "@/components/incidencia/FormularioResolucion";
 import { useToast } from "@/hooks/use-toast";
 
 const IncidenciaDetalle = () => {
@@ -20,6 +21,7 @@ const IncidenciaDetalle = () => {
   const [nuevoComentario, setNuevoComentario] = useState("");
   const [isReasignDialogOpen, setIsReasignDialogOpen] = useState(false);
   const [nuevoResponsable, setNuevoResponsable] = useState("");
+  const [isResolverDialogOpen, setIsResolverDialogOpen] = useState(false);
 
   // Mock data - en producción vendría de una API
   const incidencia = {
@@ -240,6 +242,88 @@ const IncidenciaDetalle = () => {
             </div>
             <Timeline eventos={incidencia.timeline} />
           </Card>
+
+          {/* Sección de Resolución */}
+          {incidencia.estado === 'resuelta' || incidencia.estado === 'cerrada' ? (
+            <Card className="p-6 border-emerald-200 bg-emerald-50/50">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <h2 className="text-xl font-semibold text-foreground">Resolución</h2>
+              </div>
+              {incidencia.resolucion ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Solución Aplicada</p>
+                    <p className="text-foreground">{incidencia.resolucion.solucion_aplicada}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Pasos Seguidos</p>
+                    <p className="text-foreground whitespace-pre-line">{incidencia.resolucion.pasos_seguidos}</p>
+                  </div>
+                  {incidencia.resolucion.recursos_utilizados && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Recursos Utilizados</p>
+                      <p className="text-foreground">{incidencia.resolucion.recursos_utilizados}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tiempo Invertido</p>
+                      <p className="font-medium text-foreground">
+                        {Math.floor(incidencia.resolucion.tiempo_invertido_minutos / 60)}h {incidencia.resolucion.tiempo_invertido_minutos % 60}min
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Resuelto por</p>
+                      <p className="font-medium text-foreground">{incidencia.resolucion.resuelto_por.nombre}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Fecha de Resolución</p>
+                      <p className="font-medium text-foreground">
+                        {new Date(incidencia.resolucion.fecha_resolucion).toLocaleString('es-PE')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No hay detalles de resolución disponibles</p>
+              )}
+            </Card>
+          ) : (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">Resolver Incidencia</h2>
+                </div>
+                <Dialog open={isResolverDialogOpen} onOpenChange={setIsResolverDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Resolver
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Resolver Incidencia</DialogTitle>
+                    </DialogHeader>
+                    <FormularioResolucion
+                      codigo={codigo || ''}
+                      onResuelto={() => {
+                        setIsResolverDialogOpen(false);
+                        // Recargar datos de la incidencia
+                        window.location.reload();
+                      }}
+                      onCancel={() => setIsResolverDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Completa el formulario de resolución con todos los detalles de cómo se solucionó la incidencia.
+              </p>
+            </Card>
+          )}
 
           <Card className="p-6">
             <div className="flex items-center gap-2 mb-4">

@@ -22,12 +22,14 @@ CREATE TABLE usuarios (
     password VARCHAR(255) NOT NULL COMMENT 'Hash de la contraseña (bcrypt)',
     area_id INT UNSIGNED NULL COMMENT 'Área asignada al usuario',
     rol ENUM('administrador', 'medico', 'enfermero', 'tecnico', 'usuario') NOT NULL DEFAULT 'usuario',
+    tipo_admin ENUM('ti', 'general') NULL COMMENT 'Tipo de administrador: ti (Tecnología) o general (Administrador General del Hospital)',
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_area (area_id),
     INDEX idx_rol (rol),
+    INDEX idx_tipo_admin (tipo_admin),
     INDEX idx_activo (activo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -134,6 +136,8 @@ CREATE TABLE incidencias (
     cama VARCHAR(50) NULL,
     equipo VARCHAR(255) NULL COMMENT 'Equipo médico o dispositivo implicado',
     paciente_id VARCHAR(50) NULL COMMENT 'Código del paciente (NO datos sensibles)',
+    personas_afectadas INT NULL COMMENT 'Número de personas afectadas (calculado después)',
+    pacientes_afectados INT NULL COMMENT 'Número de pacientes afectados (calculado después)',
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     fecha_vencimiento DATETIME NULL COMMENT 'Fecha límite según SLA',
@@ -199,7 +203,7 @@ CREATE TABLE archivos_adjuntos (
 CREATE TABLE historial_incidencias (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     incidencia_id INT UNSIGNED NOT NULL,
-    tipo_evento ENUM('creacion', 'asignacion', 'estado', 'comentario', 'adjunto', 'prioridad', 'reasignacion') NOT NULL,
+    tipo_evento ENUM('creacion', 'asignacion', 'estado', 'comentario', 'adjunto', 'prioridad', 'reasignacion', 'resolucion') NOT NULL,
     usuario_id INT UNSIGNED NOT NULL COMMENT 'Usuario que realizó la acción',
     descripcion TEXT NOT NULL COMMENT 'Descripción del evento',
     estado_previo VARCHAR(50) NULL COMMENT 'Estado previo (si aplica)',
@@ -265,21 +269,69 @@ INSERT INTO areas (codigo, nombre, activo) VALUES
 ('HOSP', 'Hospitalización', TRUE),
 ('QUIR', 'Quirófano', TRUE);
 
--- Insertar usuario administrador por defecto
--- Password: admin123 (hash bcrypt - debe ser generado por la aplicación)
--- NOTA: Este hash es un ejemplo, debe ser reemplazado con un hash real generado por bcrypt
-INSERT INTO usuarios (nombre, email, password, rol, activo) VALUES
-('Administrador', 'admin@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'administrador', TRUE);
+-- =====================================================
+-- USUARIOS DE EJEMPLO
+-- NOTA: Las contraseñas deben ser generadas con bcrypt usando el script createUsers.js
+-- Las contraseñas por defecto son:
+--   Admin TI: admin123
+--   Admin General: admin123
+--   Médicos: medico123
+--   Enfermeros: enfermero123
+--   Técnicos: tecnico123
+--   Usuarios: usuario123
+-- =====================================================
 
--- Actualizar el área del administrador (asignar a Administración)
-UPDATE usuarios 
-SET area_id = (SELECT id FROM areas WHERE codigo = 'ADM' LIMIT 1)
-WHERE email = 'admin@hospital.com';
+-- Insertar usuarios administradores
+-- Admin TI (asignará personas para resolver incidencias)
+INSERT INTO usuarios (nombre, email, password, rol, tipo_admin, area_id, activo) VALUES
+('Admin TI', 'admin.ti@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'administrador', 'ti', 
+ (SELECT id FROM areas WHERE codigo = 'TI' LIMIT 1), TRUE);
 
--- Actualizar responsables de áreas (asignar administrador como responsable temporal)
+-- Admin General (verá reportes y analíticas)
+INSERT INTO usuarios (nombre, email, password, rol, tipo_admin, area_id, activo) VALUES
+('Admin General', 'admin.general@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'administrador', 'general', 
+ (SELECT id FROM areas WHERE codigo = 'ADM' LIMIT 1), TRUE);
+
+-- Insertar médicos (usuarios regulares que pueden crear incidencias)
+INSERT INTO usuarios (nombre, email, password, rol, tipo_admin, area_id, activo) VALUES
+('Dr. Carlos Martínez', 'carlos.martinez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'medico', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'URG' LIMIT 1), TRUE),
+('Dra. Ana García', 'ana.garcia@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'medico', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'UCI' LIMIT 1), TRUE),
+('Dr. Luis Rodríguez', 'luis.rodriguez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'medico', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'CONS' LIMIT 1), TRUE);
+
+-- Insertar enfermeros (usuarios regulares)
+INSERT INTO usuarios (nombre, email, password, rol, tipo_admin, area_id, activo) VALUES
+('Enf. María López', 'maria.lopez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'enfermero', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'URG' LIMIT 1), TRUE),
+('Enf. Juan Pérez', 'juan.perez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'enfermero', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'HOSP' LIMIT 1), TRUE),
+('Enf. Rosa Sánchez', 'rosa.sanchez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'enfermero', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'UCI' LIMIT 1), TRUE);
+
+-- Insertar técnicos (usuarios regulares, algunos pueden resolver incidencias técnicas)
+INSERT INTO usuarios (nombre, email, password, rol, tipo_admin, area_id, activo) VALUES
+('Téc. Pedro Ramírez', 'pedro.ramirez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'tecnico', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'LAB' LIMIT 1), TRUE),
+('Téc. Sofía Torres', 'sofia.torres@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'tecnico', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'RAD' LIMIT 1), TRUE),
+('Téc. Miguel Fernández', 'miguel.fernandez@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'tecnico', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'TI' LIMIT 1), TRUE);
+
+-- Insertar usuarios regulares (pueden crear incidencias)
+INSERT INTO usuarios (nombre, email, password, rol, tipo_admin, area_id, activo) VALUES
+('Usuario Regular 1', 'usuario1@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'usuario', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'ADM' LIMIT 1), TRUE),
+('Usuario Regular 2', 'usuario2@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'usuario', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'FARM' LIMIT 1), TRUE),
+('Usuario Regular 3', 'usuario3@hospital.com', '$2b$10$rOzJqZqZqZqZqZqZqZqZqO', 'usuario', NULL, 
+ (SELECT id FROM areas WHERE codigo = 'HOSP' LIMIT 1), TRUE);
+
+-- Actualizar responsables de áreas (asignar admin TI como responsable del área TI)
 UPDATE areas 
-SET responsable_id = (SELECT id FROM usuarios WHERE email = 'admin@hospital.com' LIMIT 1)
-WHERE codigo IN ('ADM', 'TI');
+SET responsable_id = (SELECT id FROM usuarios WHERE email = 'admin.ti@hospital.com' LIMIT 1)
+WHERE codigo = 'TI';
 
 -- Insertar algunos servicios de ejemplo
 INSERT INTO servicios (area_id, nombre, descripcion, activo) VALUES
@@ -302,6 +354,58 @@ INSERT INTO subtipos_incidencias (tipo_incidencia_id, nombre, descripcion, activ
 ((SELECT id FROM tipos_incidencias WHERE nombre = 'Infraestructura' LIMIT 1), 'Plomería', 'Problemas de agua y desagüe', TRUE),
 ((SELECT id FROM tipos_incidencias WHERE nombre = 'Clínica' LIMIT 1), 'Equipamiento médico', 'Fallo en equipos médicos', TRUE),
 ((SELECT id FROM tipos_incidencias WHERE nombre = 'Clínica' LIMIT 1), 'Suministros', 'Falta de insumos médicos', TRUE);
+
+-- =====================================================
+-- TABLA: resoluciones_incidencias
+-- Detalles completos de resolución de incidencias
+-- =====================================================
+CREATE TABLE resoluciones_incidencias (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    incidencia_id INT UNSIGNED NOT NULL,
+    solucion_aplicada TEXT NOT NULL COMMENT 'Descripción de la solución aplicada',
+    pasos_seguidos TEXT NOT NULL COMMENT 'Pasos seguidos para resolver la incidencia',
+    recursos_utilizados TEXT NULL COMMENT 'Recursos utilizados (equipos, materiales, personal, etc)',
+    tiempo_invertido_minutos INT UNSIGNED NOT NULL COMMENT 'Tiempo invertido en minutos',
+    resuelto_por_id INT UNSIGNED NOT NULL COMMENT 'Usuario que resolvió la incidencia',
+    fecha_resolucion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    validado_por_id INT UNSIGNED NULL COMMENT 'Usuario que validó la resolución',
+    fecha_validacion DATETIME NULL,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_incidencia (incidencia_id),
+    INDEX idx_resuelto_por (resuelto_por_id),
+    INDEX idx_validado_por (validado_por_id),
+    FOREIGN KEY (incidencia_id) REFERENCES incidencias(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (resuelto_por_id) REFERENCES usuarios(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (validado_por_id) REFERENCES usuarios(id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABLA: predicciones_incidencias
+-- Predicciones analíticas de incidencias futuras
+-- =====================================================
+CREATE TABLE predicciones_incidencias (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tipo_incidencia_id INT UNSIGNED NULL COMMENT 'Tipo de incidencia predicho (NULL si es general)',
+    area_id INT UNSIGNED NULL COMMENT 'Área predicha (NULL si es general)',
+    periodo ENUM('mensual', 'trimestral', 'anual') NOT NULL,
+    fecha_prediccion DATE NOT NULL COMMENT 'Fecha en que se generó la predicción',
+    fecha_periodo_inicio DATE NOT NULL COMMENT 'Inicio del período predicho',
+    fecha_periodo_fin DATE NOT NULL COMMENT 'Fin del período predicho',
+    probabilidad DECIMAL(5,2) NOT NULL COMMENT 'Probabilidad de ocurrencia (0-100)',
+    personas_afectadas_estimadas INT NULL COMMENT 'Estimación de personas afectadas',
+    pacientes_afectados_estimados INT NULL COMMENT 'Estimación de pacientes afectados',
+    departamento_predicho VARCHAR(255) NULL COMMENT 'Departamento más probable de ser afectado',
+    metadatos JSON NULL COMMENT 'Datos adicionales de la predicción (algoritmo usado, factores considerados, etc)',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_tipo_incidencia (tipo_incidencia_id),
+    INDEX idx_area (area_id),
+    INDEX idx_periodo (periodo),
+    INDEX idx_fecha_prediccion (fecha_prediccion),
+    INDEX idx_fecha_periodo (fecha_periodo_inicio, fecha_periodo_fin),
+    FOREIGN KEY (tipo_incidencia_id) REFERENCES tipos_incidencias(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
 -- FIN DEL SCRIPT

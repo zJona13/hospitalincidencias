@@ -89,6 +89,8 @@ import areasRoutes from './routes/areas.routes.js';
 import prioridadesRoutes from './routes/prioridades.routes.js';
 import tiposRoutes from './routes/tipos.routes.js';
 import notificacionesRoutes from './routes/notificaciones.routes.js';
+import analiticasRoutes from './routes/analiticas.routes.js';
+import adminTiRoutes from './routes/admin-ti.routes.js';
 
 // Registrar rutas
 app.use('/api/auth', authRoutes);
@@ -103,6 +105,8 @@ app.use('/api/admin/areas', areasRoutes);
 app.use('/api/admin/prioridades', prioridadesRoutes);
 app.use('/api/admin/tipos', tiposRoutes);
 app.use('/api/notificaciones', notificacionesRoutes);
+app.use('/api/analiticas', analiticasRoutes);
+app.use('/api/admin-ti', adminTiRoutes);
 
 // Middleware de manejo de errores global
 app.use((err, req, res, next) => {

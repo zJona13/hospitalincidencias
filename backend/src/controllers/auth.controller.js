@@ -15,7 +15,7 @@ export const login = async (req, res) => {
 
     // Buscar usuario por email
     const [users] = await pool.execute(
-      'SELECT id, nombre, email, password, rol, area_id, activo FROM usuarios WHERE email = ?',
+      'SELECT id, nombre, email, password, rol, tipo_admin, area_id, activo FROM usuarios WHERE email = ?',
       [email]
     );
 
@@ -62,7 +62,8 @@ export const login = async (req, res) => {
       {
         id: user.id,
         email: user.email,
-        rol: user.rol
+        rol: user.rol,
+        tipo_admin: user.tipo_admin || null
       },
       process.env.JWT_SECRET || 'secret-key-change-in-production',
       { expiresIn: '7d' }
@@ -78,6 +79,7 @@ export const login = async (req, res) => {
           nombre: user.nombre,
           email: user.email,
           rol: user.rol,
+          tipo_admin: user.tipo_admin || null,
           area: area ? {
             id: area.id,
             codigo: area.codigo,
@@ -102,7 +104,7 @@ export const me = async (req, res) => {
 
     // Obtener información completa del usuario
     const [users] = await pool.execute(
-      `SELECT u.id, u.nombre, u.email, u.rol, u.area_id, u.activo,
+      `SELECT u.id, u.nombre, u.email, u.rol, u.tipo_admin, u.area_id, u.activo,
               a.id as area_id, a.codigo as area_codigo, a.nombre as area_nombre
        FROM usuarios u
        LEFT JOIN areas a ON u.area_id = a.id
@@ -126,6 +128,7 @@ export const me = async (req, res) => {
         nombre: user.nombre,
         email: user.email,
         rol: user.rol,
+        tipo_admin: user.tipo_admin || null,
         activo: user.activo,
         area: user.area_id ? {
           id: user.area_id,
