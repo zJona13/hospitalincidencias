@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,10 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Save, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { catalogosService } from "@/services/catalogos.service";
+import { incidenciasService } from "@/services/incidencias.service";
+import { archivosService } from "@/services/archivos.service";
 
 const CrearIncidencia = () => {
   const navigate = useNavigate();
@@ -23,33 +27,104 @@ const CrearIncidencia = () => {
   const [formData, setFormData] = useState({
     titulo: "",
     descripcion: "",
-    area: "",
-    servicio: "",
-    tipo: "",
-    subtipo: "",
-    prioridad: "",
+    area_id: "",
+    servicio_id: "",
+    tipo_incidencia_id: "",
+    subtipo_incidencia_id: "",
+    prioridad_id: "",
+    responsable_id: "",
     piso: "",
     habitacion: "",
     cama: "",
     equipo: "",
-    pacienteId: "",
+    paciente_id: "",
   });
 
   const [archivos, setArchivos] = useState<File[]>([]);
+
+  // Cargar catálogos
+  const { data: areas = [] } = useQuery({
+    queryKey: ['catalogos', 'areas'],
+    queryFn: () => catalogosService.getAreas(),
+  });
+
+  const { data: tipos = [] } = useQuery({
+    queryKey: ['catalogos', 'tipos'],
+    queryFn: () => catalogosService.getTipos(),
+  });
+
+  const { data: prioridades = [] } = useQuery({
+    queryKey: ['catalogos', 'prioridades'],
+    queryFn: () => catalogosService.getPrioridades(),
+  });
+
+  const { data: servicios = [] } = useQuery({
+    queryKey: ['catalogos', 'servicios', formData.area_id],
+    queryFn: () => catalogosService.getServicios(formData.area_id ? parseInt(formData.area_id) : undefined),
+    enabled: !!formData.area_id,
+  });
+
+  const { data: subtipos = [] } = useQuery({
+    queryKey: ['catalogos', 'subtipos', formData.tipo_incidencia_id],
+    queryFn: () => catalogosService.getSubtipos(formData.tipo_incidencia_id ? parseInt(formData.tipo_incidencia_id) : undefined),
+    enabled: !!formData.tipo_incidencia_id,
+  });
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['catalogos', 'usuarios'],
+    queryFn: () => catalogosService.getUsuarios(),
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Crear incidencia
+      const data: any = {
+        titulo: formData.titulo,
+        descripcion: formData.descripcion,
+        area_id: parseInt(formData.area_id),
+        tipo_incidencia_id: parseInt(formData.tipo_incidencia_id),
+        prioridad_id: parseInt(formData.prioridad_id),
+      };
+
+      if (formData.servicio_id) data.servicio_id = parseInt(formData.servicio_id);
+      if (formData.subtipo_incidencia_id) data.subtipo_incidencia_id = parseInt(formData.subtipo_incidencia_id);
+      if (formData.responsable_id) data.responsable_id = parseInt(formData.responsable_id);
+      if (formData.piso) data.piso = formData.piso;
+      if (formData.habitacion) data.habitacion = formData.habitacion;
+      if (formData.cama) data.cama = formData.cama;
+      if (formData.equipo) data.equipo = formData.equipo;
+      if (formData.paciente_id) data.paciente_id = formData.paciente_id;
+
+      const resultado = await incidenciasService.crear(data);
+
+      // Subir archivos si hay
+      if (archivos.length > 0) {
+        for (const archivo of archivos) {
+          try {
+            await archivosService.subir(resultado.codigo, archivo);
+          } catch (error) {
+            console.error('Error al subir archivo:', error);
+          }
+        }
+      }
+
       toast({
         title: "Incidencia creada exitosamente",
-        description: "La incidencia ha sido registrada con el código INC-2024-016",
+        description: `La incidencia ha sido registrada con el código ${resultado.codigo}`,
       });
       navigate("/incidencias");
+    } catch (error: any) {
+      toast({
+        title: "Error al crear incidencia",
+        description: error.response?.data?.message || "Ocurrió un error al crear la incidencia",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -113,75 +188,111 @@ const CrearIncidencia = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="area">Área *</Label>
-                  <Select value={formData.area} onValueChange={(value) => handleChange("area", value)} required>
+                  <Select value={formData.area_id} onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, area_id: value, servicio_id: "" }));
+                  }} required>
                     <SelectTrigger id="area">
                       <SelectValue placeholder="Selecciona el área" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="urgencias">Urgencias</SelectItem>
-                      <SelectItem value="consultorios">Consultorios</SelectItem>
-                      <SelectItem value="radiologia">Radiología</SelectItem>
-                      <SelectItem value="laboratorio">Laboratorio</SelectItem>
-                      <SelectItem value="farmacia">Farmacia</SelectItem>
-                      <SelectItem value="quirofano">Quirófano</SelectItem>
-                      <SelectItem value="hospitalizacion">Hospitalización</SelectItem>
-                      <SelectItem value="administracion">Administración</SelectItem>
+                      {areas.map((area) => (
+                        <SelectItem key={area.id} value={area.id.toString()}>
+                          {area.nombre}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="servicio">Servicio específico</Label>
-                  <Input
-                    id="servicio"
-                    placeholder="Ej: Sala 2"
-                    value={formData.servicio}
-                    onChange={(e) => handleChange("servicio", e.target.value)}
-                  />
+                  <Select 
+                    value={formData.servicio_id} 
+                    onValueChange={(value) => handleChange("servicio_id", value)}
+                    disabled={!formData.area_id}
+                  >
+                    <SelectTrigger id="servicio">
+                      <SelectValue placeholder="Selecciona el servicio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {servicios.map((servicio) => (
+                        <SelectItem key={servicio.id} value={servicio.id.toString()}>
+                          {servicio.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="tipo">Tipo de incidencia *</Label>
-                  <Select value={formData.tipo} onValueChange={(value) => handleChange("tipo", value)} required>
+                  <Select value={formData.tipo_incidencia_id} onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, tipo_incidencia_id: value, subtipo_incidencia_id: "" }));
+                  }} required>
                     <SelectTrigger id="tipo">
                       <SelectValue placeholder="Selecciona el tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="clinica">Clínica</SelectItem>
-                      <SelectItem value="infraestructura">Infraestructura</SelectItem>
-                      <SelectItem value="ti">Tecnología de Información</SelectItem>
-                      <SelectItem value="equipamiento">Equipamiento médico</SelectItem>
-                      <SelectItem value="suministros">Suministros</SelectItem>
-                      <SelectItem value="seguridad">Seguridad</SelectItem>
-                      <SelectItem value="otro">Otro</SelectItem>
+                      {tipos.map((tipo) => (
+                        <SelectItem key={tipo.id} value={tipo.id.toString()}>
+                          {tipo.nombre}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="subtipo">Subtipo</Label>
-                  <Input
-                    id="subtipo"
-                    placeholder="Ej: Hardware, software..."
-                    value={formData.subtipo}
-                    onChange={(e) => handleChange("subtipo", e.target.value)}
-                  />
+                  <Select
+                    value={formData.subtipo_incidencia_id}
+                    onValueChange={(value) => handleChange("subtipo_incidencia_id", value)}
+                    disabled={!formData.tipo_incidencia_id}
+                  >
+                    <SelectTrigger id="subtipo">
+                      <SelectValue placeholder="Selecciona el subtipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subtipos.map((subtipo) => (
+                        <SelectItem key={subtipo.id} value={subtipo.id.toString()}>
+                          {subtipo.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="prioridad">Prioridad *</Label>
-                <Select value={formData.prioridad} onValueChange={(value) => handleChange("prioridad", value)} required>
+                <Select value={formData.prioridad_id} onValueChange={(value) => handleChange("prioridad_id", value)} required>
                   <SelectTrigger id="prioridad">
                     <SelectValue placeholder="Selecciona la prioridad" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="critica">Crítica - Riesgo inmediato para pacientes</SelectItem>
-                    <SelectItem value="alta">Alta - Impacto crítico en atención</SelectItem>
-                    <SelectItem value="media">Media - Impacto moderado</SelectItem>
-                    <SelectItem value="baja">Baja - Impacto mínimo</SelectItem>
+                    {prioridades.map((prioridad) => (
+                      <SelectItem key={prioridad.id} value={prioridad.id.toString()}>
+                        {prioridad.nombre} - {prioridad.tiempo_resolucion_horas}h para resolver
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="responsable">Responsable</Label>
+                <Select value={formData.responsable_id} onValueChange={(value) => handleChange("responsable_id", value)}>
+                  <SelectTrigger id="responsable">
+                    <SelectValue placeholder="Selecciona un responsable (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map((usuario) => (
+                      <SelectItem key={usuario.id} value={usuario.id.toString()}>
+                        {usuario.nombre} ({usuario.rol})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

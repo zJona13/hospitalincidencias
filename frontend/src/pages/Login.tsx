@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Hospital, Lock, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -18,24 +20,24 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication
-    setTimeout(() => {
-      if (email && password) {
-        localStorage.setItem("isAuthenticated", "true");
-        toast({
-          title: "Inicio de sesión exitoso",
-          description: "Bienvenido al Sistema de Gestión de Incidencias",
-        });
-        navigate("/dashboard");
-      } else {
-        toast({
-          title: "Error de autenticación",
-          description: "Por favor verifica tus credenciales",
-          variant: "destructive",
-        });
-      }
+    try {
+      await login(email, password);
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: "Bienvenido al Sistema de Gestión de Incidencias",
+      });
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error('Error en login:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Por favor verifica tus credenciales";
+      toast({
+        title: "Error de autenticación",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

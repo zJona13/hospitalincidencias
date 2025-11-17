@@ -13,78 +13,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PlusCircle, Search, Filter, Eye } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { incidenciasService } from "@/services/incidencias.service";
 
 const MisIncidencias = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [tipoTab, setTipoTab] = useState<"creadas" | "asignadas" | "todas">("creadas");
 
-  // Mock data - incidencias creadas por el usuario
-  const incidenciasCreadasPorMi = [
-    {
-      codigo: "INC-2024-015",
-      titulo: "Fallo en sistema de rayos X",
-      descripcion: "El sistema de rayos X no se enciende correctamente",
-      area: "Radiología",
-      tipo: "TI",
-      prioridad: "alta",
-      estado: "en_progreso",
-      responsable: "Dr. García",
-      reportadoPor: "Dra. Martínez",
-      fecha: "2024-11-14 08:30",
-    },
-    {
-      codigo: "INC-2024-012",
-      titulo: "Falta de insumos médicos",
-      descripcion: "Stock bajo de material quirúrgico",
-      area: "Farmacia",
-      tipo: "Clínica",
-      prioridad: "alta",
-      estado: "abierta",
-      responsable: "Lic. López",
-      reportadoPor: "Dr. Ramírez",
-      fecha: "2024-11-13 14:20",
-    },
-  ];
+  // Obtener incidencias
+  const { data: incidenciasCreadasPorMi = [], isLoading: loadingCreadas } = useQuery({
+    queryKey: ['mis-incidencias', 'creadas', searchTerm],
+    queryFn: () => incidenciasService.misIncidencias('creadas', searchTerm ? { search: searchTerm } : undefined),
+  });
 
-  // Mock data - incidencias asignadas al usuario
-  const incidenciasAsignadasAMi = [
-    {
-      codigo: "INC-2024-014",
-      titulo: "Aire acondicionado no funciona",
-      descripcion: "Sistema de climatización fuera de servicio",
-      area: "Urgencias",
-      tipo: "Infraestructura",
-      prioridad: "media",
-      estado: "abierta",
-      responsable: "Mantenimiento",
-      reportadoPor: "Enf. López",
-      fecha: "2024-11-14 07:15",
-    },
-    {
-      codigo: "INC-2024-013",
-      titulo: "Red lenta en consultorios",
-      descripcion: "Velocidad de internet muy reducida",
-      area: "Consultorios",
-      tipo: "TI",
-      prioridad: "media",
-      estado: "en_progreso",
-      responsable: "Ing. Martínez",
-      reportadoPor: "Dr. Pérez",
-      fecha: "2024-11-13 16:45",
-    },
-    {
-      codigo: "INC-2024-011",
-      titulo: "Cerradura de puerta rota",
-      descripcion: "Puerta de consultorio 3 no cierra bien",
-      area: "Consultorios",
-      tipo: "Infraestructura",
-      prioridad: "baja",
-      estado: "resuelta",
-      responsable: "Mantenimiento",
-      reportadoPor: "Recepción",
-      fecha: "2024-11-13 11:00",
-    },
-  ];
+  const { data: incidenciasAsignadasAMi = [], isLoading: loadingAsignadas } = useQuery({
+    queryKey: ['mis-incidencias', 'asignadas', searchTerm],
+    queryFn: () => incidenciasService.misIncidencias('asignadas', searchTerm ? { search: searchTerm } : undefined),
+  });
+
 
   const getPriorityBadge = (priority: string) => {
     const variants = {
@@ -126,50 +73,52 @@ const MisIncidencias = () => {
           <div className="flex-1 space-y-3">
             <div className="flex items-start gap-3">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {inc.titulo}
-                  </h3>
-                  <Badge className={getPriorityBadge(inc.prioridad)}>
-                    {inc.prioridad.charAt(0).toUpperCase() + inc.prioridad.slice(1)}
-                  </Badge>
-                  <Badge className={statusBadge.className}>
-                    {statusBadge.label}
-                  </Badge>
-                </div>
-                <p className="text-sm font-mono text-muted-foreground">
-                  {inc.codigo}
-                </p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {inc.titulo}
+                      </h3>
+                      <Badge className={getPriorityBadge(inc.prioridad?.nombre || 'baja')}>
+                        {inc.prioridad?.nombre || 'N/A'}
+                      </Badge>
+                      <Badge className={statusBadge.className}>
+                        {statusBadge.label}
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-mono text-muted-foreground">
+                      {inc.codigo}
+                    </p>
               </div>
             </div>
 
             <p className="text-sm text-muted-foreground">{inc.descripcion}</p>
 
             <div className="flex flex-wrap gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Área:</span>{" "}
-                <span className="font-medium text-foreground">{inc.area}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Tipo:</span>{" "}
-                <span className="font-medium text-foreground">{inc.tipo}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Responsable:</span>{" "}
-                <span className="font-medium text-foreground">
-                  {inc.responsable}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Reportado por:</span>{" "}
-                <span className="font-medium text-foreground">
-                  {inc.reportadoPor}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Fecha:</span>{" "}
-                <span className="font-medium text-foreground">{inc.fecha}</span>
-              </div>
+                  <div>
+                    <span className="text-muted-foreground">Área:</span>{" "}
+                    <span className="font-medium text-foreground">{inc.area?.nombre || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tipo:</span>{" "}
+                    <span className="font-medium text-foreground">{inc.tipo || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Responsable:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      {inc.responsable?.nombre || '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Reportado por:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      {inc.reportadoPor?.nombre || '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Fecha:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      {inc.fecha ? new Date(inc.fecha).toLocaleString('es-ES') : '-'}
+                    </span>
+                  </div>
             </div>
           </div>
 
@@ -260,7 +209,7 @@ const MisIncidencias = () => {
       </Card>
 
       {/* Tabs para Creadas por mí / Asignadas a mí */}
-      <Tabs defaultValue="creadas" className="space-y-4">
+      <Tabs value={tipoTab} onValueChange={(v) => setTipoTab(v as "creadas" | "asignadas" | "todas")} className="space-y-4">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="creadas">
             Creadas por mí ({incidenciasCreadasPorMi.length})
@@ -271,11 +220,27 @@ const MisIncidencias = () => {
         </TabsList>
 
         <TabsContent value="creadas" className="space-y-4">
-          {incidenciasCreadasPorMi.map((inc) => renderIncidentCard(inc))}
+          {loadingCreadas ? (
+            <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+          ) : incidenciasCreadasPorMi.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">No has creado ninguna incidencia</p>
+            </Card>
+          ) : (
+            incidenciasCreadasPorMi.map((inc) => renderIncidentCard(inc))
+          )}
         </TabsContent>
 
         <TabsContent value="asignadas" className="space-y-4">
-          {incidenciasAsignadasAMi.map((inc) => renderIncidentCard(inc))}
+          {loadingAsignadas ? (
+            <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+          ) : incidenciasAsignadasAMi.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">No tienes incidencias asignadas</p>
+            </Card>
+          ) : (
+            incidenciasAsignadasAMi.map((inc) => renderIncidentCard(inc))
+          )}
         </TabsContent>
       </Tabs>
     </div>

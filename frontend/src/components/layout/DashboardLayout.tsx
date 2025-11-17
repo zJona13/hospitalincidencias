@@ -3,16 +3,36 @@ import { useNavigate, Outlet } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function DashboardLayout() {
   const navigate = useNavigate();
+  const { isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (!isAuthenticated) {
-      navigate("/login");
+    // Esperar a que termine de cargar antes de verificar autenticación
+    if (!loading && !isAuthenticated) {
+      // Pequeño delay para evitar redirección inmediata durante el login
+      const timer = setTimeout(() => {
+        if (!isAuthenticated) {
+          navigate("/login", { replace: true });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [navigate]);
+  }, [isAuthenticated, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Cargando...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <SidebarProvider>
