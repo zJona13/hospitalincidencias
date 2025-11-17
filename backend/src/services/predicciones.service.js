@@ -35,8 +35,7 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
       }
     }
 
-    // Obtener datos históricos del mismo período en años anteriores
-    const aniosHistoricos = 2; // Analizar últimos 2 años
+    // Usar datos del último año disponible (últimos 12 meses)
     const predicciones = [];
 
     // 1. Predicciones por tipo de incidencia
@@ -45,57 +44,120 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
     );
 
     for (const tipo of tiposIncidencias) {
-      // Calcular promedio histórico del mismo período
+      // Obtener datos históricos del último año, intentando usar el mismo período
       const mes = inicioPeriodo.getMonth();
-      const anio = inicioPeriodo.getFullYear();
       
+      // Primero intentar obtener datos del mismo mes/trimestre del último año
       let queryHistorico = `
         SELECT 
           COUNT(*) as total,
-          AVG(TIMESTAMPDIFF(HOUR, fecha_creacion, fecha_resolucion)) as tiempo_promedio,
-          AVG(personas_afectadas) as personas_promedio,
-          AVG(pacientes_afectados) as pacientes_promedio
-        FROM incidencias
-        WHERE tipo_incidencia_id = ?
-          AND estado IN ('resuelta', 'cerrada')
+          AVG(TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion)) as tiempo_promedio,
+          AVG(i.personas_afectadas) as personas_promedio,
+          AVG(i.pacientes_afectados) as pacientes_promedio,
+          AVG(COALESCE(r.tiempo_invertido_minutos, TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion) * 60)) / 60 as tiempo_real_promedio_horas
+        FROM incidencias i
+        LEFT JOIN resoluciones_incidencias r ON i.id = r.incidencia_id
+        WHERE i.tipo_incidencia_id = ?
+          AND i.estado IN ('resuelta', 'cerrada')
+          AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
       `;
 
       const params = [tipo.id];
 
       if (periodo === 'mensual') {
-        queryHistorico += ` AND MONTH(fecha_creacion) = ? AND YEAR(fecha_creacion) < ?`;
-        params.push(mes + 1, anio);
+        // Buscar el mismo mes en los últimos 12 meses
+        queryHistorico += ` AND MONTH(i.fecha_creacion) = ?`;
+        params.push(mes + 1);
       } else if (periodo === 'trimestral') {
-        const trimestre = Math.floor(mes / 3);
-        queryHistorico += ` AND QUARTER(fecha_creacion) = ? AND YEAR(fecha_creacion) < ?`;
-        params.push(trimestre + 1, anio);
-      } else {
-        queryHistorico += ` AND YEAR(fecha_creacion) < ?`;
-        params.push(anio);
+        const trimestre = Math.floor(mes / 3) + 1;
+        queryHistorico += ` AND QUARTER(i.fecha_creacion) = ?`;
+        params.push(trimestre);
       }
+      // Para anual, usar todos los datos del último año
 
       const [historico] = await pool.execute(queryHistorico, params);
 
-      if (historico.length > 0 && historico[0].total > 0) {
-        const total = parseInt(historico[0].total) || 0;
-        const promedio = total / aniosHistoricos;
+      // Si no hay datos del mismo período, usar promedio de todos los datos del último año
+      let total = parseInt(historico[0]?.total || 0);
+      let tiempoPromedio = parseFloat(historico[0]?.tiempo_promedio || 0);
+      let tiempoRealPromedio = parseFloat(historico[0]?.tiempo_real_promedio_horas || tiempoPromedio);
+      let personasPromedio = parseFloat(historico[0]?.personas_promedio || 0);
+      let pacientesPromedio = parseFloat(historico[0]?.pacientes_promedio || 0);
+      let numPeriodos = 1; // Para calcular promedio
+
+      if (total === 0 || (periodo === 'mensual' && total < 3)) {
+        // Si no hay suficientes datos del mismo mes, usar promedio general del último año
+        const [historicoGeneral] = await pool.execute(`
+          SELECT 
+            COUNT(*) as total,
+            AVG(TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion)) as tiempo_promedio,
+            AVG(COALESCE(r.tiempo_invertido_minutos, TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion) * 60)) / 60 as tiempo_real_promedio_horas,
+            AVG(i.personas_afectadas) as personas_promedio,
+            AVG(i.pacientes_afectados) as pacientes_promedio,
+            COUNT(DISTINCT DATE_FORMAT(i.fecha_creacion, '%Y-%m')) as meses_con_datos
+          FROM incidencias i
+          LEFT JOIN resoluciones_incidencias r ON i.id = r.incidencia_id
+          WHERE i.tipo_incidencia_id = ?
+            AND i.estado IN ('resuelta', 'cerrada')
+            AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        `, [tipo.id]);
+
+        if (historicoGeneral[0]?.total > 0) {
+          total = parseInt(historicoGeneral[0].total);
+          tiempoPromedio = parseFloat(historicoGeneral[0].tiempo_promedio || 0);
+          tiempoRealPromedio = parseFloat(historicoGeneral[0].tiempo_real_promedio_horas || tiempoPromedio);
+          personasPromedio = parseFloat(historicoGeneral[0].personas_promedio || 0);
+          pacientesPromedio = parseFloat(historicoGeneral[0].pacientes_promedio || 0);
+          
+          if (periodo === 'mensual') {
+            // Usar el número real de meses con datos para calcular promedio mensual
+            numPeriodos = parseInt(historicoGeneral[0].meses_con_datos || 1);
+          } else if (periodo === 'trimestral') {
+            // Calcular número de trimestres con datos
+            const [trimestresConDatos] = await pool.execute(`
+              SELECT COUNT(DISTINCT QUARTER(i.fecha_creacion)) as trimestres
+              FROM incidencias i
+              WHERE i.tipo_incidencia_id = ?
+                AND i.estado IN ('resuelta', 'cerrada')
+                AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+            `, [tipo.id]);
+            numPeriodos = parseInt(trimestresConDatos[0]?.trimestres || 1);
+          } else {
+            numPeriodos = 1; // Anual
+          }
+        }
+      } else {
+        // Si hay datos del mismo período, calcular cuántos períodos similares hay en el último año
+        if (periodo === 'mensual') {
+          numPeriodos = 1; // Ya tenemos datos del mismo mes
+        } else if (periodo === 'trimestral') {
+          numPeriodos = 1; // Ya tenemos datos del mismo trimestre
+        }
+      }
+
+      if (total > 0) {
+        // Calcular promedio de incidencias por período
+        const promedio = total / numPeriodos;
         
         // Calcular tendencia (promedio móvil simple)
         const probabilidad = Math.min(100, Math.max(0, (promedio / 10) * 100)); // Escalar probabilidad
         
         // Estimar impacto basado en promedios históricos
-        const personasEstimadas = Math.round(historico[0].personas_promedio * promedio) || Math.round(promedio * 5);
-        const pacientesEstimados = Math.round(historico[0].pacientes_promedio * promedio) || Math.round(promedio * 3);
+        const personasEstimadas = Math.round((personasPromedio || 5) * promedio) || Math.round(promedio * 5);
+        const pacientesEstimados = Math.round((pacientesPromedio || 3) * promedio) || Math.round(promedio * 3);
 
-        // Calcular costo estimado (basado en tiempo promedio y tipo)
+        // Calcular costo estimado (basado en tiempo real de resolución cuando esté disponible, sino tiempo promedio)
         const costoPorHora = tipo.nombre.toLowerCase().includes('clínica') ? 150 : 
                             tipo.nombre.toLowerCase().includes('ti') ? 100 :
                             tipo.nombre.toLowerCase().includes('infraestructura') ? 80 : 50;
-        const horasEstimadas = (historico[0].tiempo_promedio || 8) * promedio;
+        
+        // Usar tiempo real si está disponible, sino tiempo promedio calculado
+        const tiempoResolucion = tiempoRealPromedio > 0 ? tiempoRealPromedio : (tiempoPromedio || 8);
+        const horasEstimadas = tiempoResolucion * promedio;
         const costoEstimado = Math.round(horasEstimadas * costoPorHora);
 
         // Calcular impacto operativo
-        const tiempoAtencionPerdido = Math.round((historico[0].tiempo_promedio || 8) * promedio * pacientesEstimados);
+        const tiempoAtencionPerdido = Math.round(tiempoResolucion * promedio * pacientesEstimados);
         const personalNecesario = Math.ceil(promedio / 5); // Estimación: 1 persona cada 5 incidencias
 
         predicciones.push({
@@ -116,7 +178,9 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
           metadatos: JSON.stringify({
             total_historico: total,
             promedio_calculado: promedio,
-            tiempo_promedio_horas: historico[0].tiempo_promedio || null,
+            num_periodos: numPeriodos,
+            tiempo_promedio_horas: tiempoPromedio || null,
+            tiempo_real_promedio_horas: tiempoRealPromedio || null,
             algoritmo: 'promedio_movil_simple',
             costo_por_hora: costoPorHora
           })
@@ -131,47 +195,94 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
 
     for (const area of areas) {
       const mes = inicioPeriodo.getMonth();
-      const anio = inicioPeriodo.getFullYear();
       
+      // Obtener datos históricos del último año para el área
       let queryHistorico = `
         SELECT 
           COUNT(*) as total,
-          AVG(personas_afectadas) as personas_promedio,
-          AVG(pacientes_afectados) as pacientes_promedio
-        FROM incidencias
-        WHERE area_id = ?
-          AND estado IN ('resuelta', 'cerrada')
+          AVG(TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion)) as tiempo_promedio,
+          AVG(COALESCE(r.tiempo_invertido_minutos, TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion) * 60)) / 60 as tiempo_real_promedio_horas,
+          AVG(i.personas_afectadas) as personas_promedio,
+          AVG(i.pacientes_afectados) as pacientes_promedio
+        FROM incidencias i
+        LEFT JOIN resoluciones_incidencias r ON i.id = r.incidencia_id
+        WHERE i.area_id = ?
+          AND i.estado IN ('resuelta', 'cerrada')
+          AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
       `;
 
       const params = [area.id];
 
       if (periodo === 'mensual') {
-        queryHistorico += ` AND MONTH(fecha_creacion) = ? AND YEAR(fecha_creacion) < ?`;
-        params.push(mes + 1, anio);
+        queryHistorico += ` AND MONTH(i.fecha_creacion) = ?`;
+        params.push(mes + 1);
       } else if (periodo === 'trimestral') {
-        const trimestre = Math.floor(mes / 3);
-        queryHistorico += ` AND QUARTER(fecha_creacion) = ? AND YEAR(fecha_creacion) < ?`;
-        params.push(trimestre + 1, anio);
-      } else {
-        queryHistorico += ` AND YEAR(fecha_creacion) < ?`;
-        params.push(anio);
+        const trimestre = Math.floor(mes / 3) + 1;
+        queryHistorico += ` AND QUARTER(i.fecha_creacion) = ?`;
+        params.push(trimestre);
       }
 
       const [historico] = await pool.execute(queryHistorico, params);
 
-      if (historico.length > 0 && historico[0].total > 0) {
-        const total = parseInt(historico[0].total) || 0;
-        const promedio = total / aniosHistoricos;
+      // Si no hay datos del mismo período, usar promedio general del último año
+      let total = parseInt(historico[0]?.total || 0);
+      let tiempoPromedio = parseFloat(historico[0]?.tiempo_promedio || 0);
+      let tiempoRealPromedio = parseFloat(historico[0]?.tiempo_real_promedio_horas || tiempoPromedio);
+      let personasPromedio = parseFloat(historico[0]?.personas_promedio || 0);
+      let pacientesPromedio = parseFloat(historico[0]?.pacientes_promedio || 0);
+      let numPeriodos = 1;
+
+      if (total === 0 || (periodo === 'mensual' && total < 3)) {
+        const [historicoGeneral] = await pool.execute(`
+          SELECT 
+            COUNT(*) as total,
+            AVG(TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion)) as tiempo_promedio,
+            AVG(COALESCE(r.tiempo_invertido_minutos, TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion) * 60)) / 60 as tiempo_real_promedio_horas,
+            AVG(i.personas_afectadas) as personas_promedio,
+            AVG(i.pacientes_afectados) as pacientes_promedio,
+            COUNT(DISTINCT DATE_FORMAT(i.fecha_creacion, '%Y-%m')) as meses_con_datos
+          FROM incidencias i
+          LEFT JOIN resoluciones_incidencias r ON i.id = r.incidencia_id
+          WHERE i.area_id = ?
+            AND i.estado IN ('resuelta', 'cerrada')
+            AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        `, [area.id]);
+
+        if (historicoGeneral[0]?.total > 0) {
+          total = parseInt(historicoGeneral[0].total);
+          tiempoPromedio = parseFloat(historicoGeneral[0].tiempo_promedio || 0);
+          tiempoRealPromedio = parseFloat(historicoGeneral[0].tiempo_real_promedio_horas || tiempoPromedio);
+          personasPromedio = parseFloat(historicoGeneral[0].personas_promedio || 0);
+          pacientesPromedio = parseFloat(historicoGeneral[0].pacientes_promedio || 0);
+          
+          if (periodo === 'mensual') {
+            numPeriodos = parseInt(historicoGeneral[0].meses_con_datos || 1);
+          } else if (periodo === 'trimestral') {
+            const [trimestresConDatos] = await pool.execute(`
+              SELECT COUNT(DISTINCT QUARTER(i.fecha_creacion)) as trimestres
+              FROM incidencias i
+              WHERE i.area_id = ?
+                AND i.estado IN ('resuelta', 'cerrada')
+                AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+            `, [area.id]);
+            numPeriodos = parseInt(trimestresConDatos[0]?.trimestres || 1);
+          }
+        }
+      }
+
+      if (total > 0) {
+        const promedio = total / numPeriodos;
         const probabilidad = Math.min(100, Math.max(0, (promedio / 5) * 100));
         
-        const personasEstimadas = Math.round((historico[0].personas_promedio || 5) * promedio);
-        const pacientesEstimados = Math.round((historico[0].pacientes_promedio || 3) * promedio);
+        const personasEstimadas = Math.round((personasPromedio || 5) * promedio);
+        const pacientesEstimados = Math.round((pacientesPromedio || 3) * promedio);
 
-        // Calcular métricas adicionales para área
+        // Calcular métricas adicionales para área usando tiempo real si está disponible
         const costoPorHoraArea = 100; // Promedio general
-        const horasEstimadasArea = 8 * promedio; // Estimación conservadora
+        const tiempoResolucion = tiempoRealPromedio > 0 ? tiempoRealPromedio : (tiempoPromedio || 8);
+        const horasEstimadasArea = tiempoResolucion * promedio;
         const costoEstimadoArea = Math.round(horasEstimadasArea * costoPorHoraArea);
-        const tiempoAtencionPerdidoArea = Math.round(8 * promedio * pacientesEstimados);
+        const tiempoAtencionPerdidoArea = Math.round(tiempoResolucion * promedio * pacientesEstimados);
         const personalNecesarioArea = Math.ceil(promedio / 5);
 
         predicciones.push({
@@ -192,6 +303,9 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
           metadatos: JSON.stringify({
             total_historico: total,
             promedio_calculado: promedio,
+            num_periodos: numPeriodos,
+            tiempo_promedio_horas: tiempoPromedio || null,
+            tiempo_real_promedio_horas: tiempoRealPromedio || null,
             algoritmo: 'promedio_movil_simple',
             costo_por_hora: costoPorHoraArea
           })
@@ -203,16 +317,39 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
     const [general] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        AVG(personas_afectadas) as personas_promedio,
-        AVG(pacientes_afectados) as pacientes_promedio
-      FROM incidencias
-      WHERE estado IN ('resuelta', 'cerrada')
-        AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL ? YEAR)
-    `, [aniosHistoricos]);
+        AVG(TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion)) as tiempo_promedio,
+        AVG(COALESCE(r.tiempo_invertido_minutos, TIMESTAMPDIFF(HOUR, i.fecha_creacion, i.fecha_resolucion) * 60)) / 60 as tiempo_real_promedio_horas,
+        AVG(i.personas_afectadas) as personas_promedio,
+        AVG(i.pacientes_afectados) as pacientes_promedio,
+        COUNT(DISTINCT DATE_FORMAT(i.fecha_creacion, '%Y-%m')) as meses_con_datos
+      FROM incidencias i
+      LEFT JOIN resoluciones_incidencias r ON i.id = r.incidencia_id
+      WHERE i.estado IN ('resuelta', 'cerrada')
+        AND i.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+    `);
 
     if (general.length > 0 && general[0].total > 0) {
       const total = parseInt(general[0].total);
-      const promedio = total / (aniosHistoricos * 12); // Promedio mensual
+      const tiempoPromedio = parseFloat(general[0].tiempo_promedio || 0);
+      const tiempoRealPromedio = parseFloat(general[0].tiempo_real_promedio_horas || tiempoPromedio);
+      
+      // Calcular promedio según el período solicitado
+      let numPeriodos = 1;
+      if (periodo === 'mensual') {
+        numPeriodos = parseInt(general[0].meses_con_datos || 1);
+      } else if (periodo === 'trimestral') {
+        const [trimestresConDatos] = await pool.execute(`
+          SELECT COUNT(DISTINCT QUARTER(fecha_creacion)) as trimestres
+          FROM incidencias
+          WHERE estado IN ('resuelta', 'cerrada')
+            AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        `);
+        numPeriodos = parseInt(trimestresConDatos[0]?.trimestres || 1);
+      } else {
+        numPeriodos = 1; // Anual
+      }
+      
+      const promedio = total / numPeriodos;
       const probabilidad = Math.min(100, Math.max(0, (promedio / 20) * 100));
       
       const personasEstimadas = Math.round((general[0].personas_promedio || 5) * promedio);
@@ -223,17 +360,18 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
         SELECT tipo_incidencia_id, COUNT(*) as total
         FROM incidencias
         WHERE estado IN ('resuelta', 'cerrada')
-          AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL ? YEAR)
+          AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
         GROUP BY tipo_incidencia_id
         ORDER BY total DESC
         LIMIT 1
-      `, [aniosHistoricos]);
+      `);
 
-      // Calcular métricas generales
+      // Calcular métricas generales usando tiempo real si está disponible
       const costoPorHoraGeneral = 100;
-      const horasEstimadasGeneral = 8 * promedio;
+      const tiempoResolucion = tiempoRealPromedio > 0 ? tiempoRealPromedio : (tiempoPromedio || 8);
+      const horasEstimadasGeneral = tiempoResolucion * promedio;
       const costoEstimadoGeneral = Math.round(horasEstimadasGeneral * costoPorHoraGeneral);
-      const tiempoAtencionPerdidoGeneral = Math.round(8 * promedio * pacientesEstimados);
+      const tiempoAtencionPerdidoGeneral = Math.round(tiempoResolucion * promedio * pacientesEstimados);
       const personalNecesarioGeneral = Math.ceil(promedio / 5);
 
       predicciones.push({
@@ -253,6 +391,9 @@ export const calcularPredicciones = async (periodo, fechaInicio = null) => {
         metadatos: JSON.stringify({
           total_historico: total,
           promedio_calculado: promedio,
+          num_periodos: numPeriodos,
+          tiempo_promedio_horas: tiempoPromedio || null,
+          tiempo_real_promedio_horas: tiempoRealPromedio || null,
           algoritmo: 'promedio_movil_simple',
           tipo_mas_comun: tipoMasComun.length > 0 ? tipoMasComun[0].tipo_incidencia_id : null,
           costo_por_hora: costoPorHoraGeneral
@@ -345,10 +486,18 @@ export const obtenerPrediccionesGuardadas = async (periodo, fechaInicio = null) 
     
     const [predicciones] = await pool.execute(query, params);
     
-    return predicciones.map(p => ({
-      ...p,
-      metadatos: p.metadatos ? JSON.parse(p.metadatos) : null
-    }));
+    // Extraer métricas desde metadatos al nivel superior
+    return predicciones.map(p => {
+      const metadatos = p.metadatos ? JSON.parse(p.metadatos) : {};
+      return {
+        ...p,
+        metadatos,
+        costo_estimado: metadatos.costo_estimado || null,
+        tiempo_atencion_perdido_horas: metadatos.tiempo_atencion_perdido_horas || null,
+        personal_necesario: metadatos.personal_necesario || null,
+        horas_hombre_estimadas: metadatos.horas_hombre_estimadas || null,
+      };
+    });
   } catch (error) {
     console.error('Error al obtener predicciones:', error);
     throw error;

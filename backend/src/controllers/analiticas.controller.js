@@ -40,14 +40,17 @@ export const obtenerPredicciones = async (req, res) => {
     }
 
     // Enriquecer predicciones con métricas adicionales desde metadatos
+    // Las predicciones ya vienen con métricas extraídas desde obtenerPrediccionesGuardadas
+    // pero por compatibilidad, también extraemos desde metadatos si no existen en el nivel superior
     const prediccionesEnriquecidas = predicciones.map(p => {
       const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
       return {
         ...p,
-        costo_estimado: metadatos.costo_estimado || null,
-        tiempo_atencion_perdido_horas: metadatos.tiempo_atencion_perdido_horas || null,
-        personal_necesario: metadatos.personal_necesario || null,
-        horas_hombre_estimadas: metadatos.horas_hombre_estimadas || null,
+        // Priorizar valores del nivel superior si existen, sino usar metadatos
+        costo_estimado: p.costo_estimado ?? metadatos.costo_estimado ?? null,
+        tiempo_atencion_perdido_horas: p.tiempo_atencion_perdido_horas ?? metadatos.tiempo_atencion_perdido_horas ?? null,
+        personal_necesario: p.personal_necesario ?? metadatos.personal_necesario ?? null,
+        horas_hombre_estimadas: p.horas_hombre_estimadas ?? metadatos.horas_hombre_estimadas ?? null,
       };
     });
 
@@ -328,23 +331,29 @@ export const obtenerMetricasDirector = async (req, res) => {
     const predicciones = await calcularPredicciones(periodo);
     
     // Calcular resumen ejecutivo
+    // Las predicciones tienen las métricas en el nivel superior, pero también están en metadatos
+    // Priorizar valores del nivel superior, usar metadatos como fallback
     const totalPersonas = predicciones.reduce((sum, p) => sum + (p.personas_afectadas_estimadas || 0), 0);
     const totalPacientes = predicciones.reduce((sum, p) => sum + (p.pacientes_afectados_estimados || 0), 0);
     const totalCosto = predicciones.reduce((sum, p) => {
       const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
-      return sum + (metadatos.costo_estimado || 0);
+      const costo = p.costo_estimado ?? metadatos.costo_estimado ?? 0;
+      return sum + (Number(costo) || 0);
     }, 0);
     const totalHorasHombre = predicciones.reduce((sum, p) => {
       const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
-      return sum + (metadatos.horas_hombre_estimadas || 0);
+      const horas = p.horas_hombre_estimadas ?? metadatos.horas_hombre_estimadas ?? 0;
+      return sum + (Number(horas) || 0);
     }, 0);
     const totalPersonalNecesario = predicciones.reduce((sum, p) => {
       const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
-      return sum + (metadatos.personal_necesario || 0);
+      const personal = p.personal_necesario ?? metadatos.personal_necesario ?? 0;
+      return sum + (Number(personal) || 0);
     }, 0);
     const totalTiempoAtencionPerdido = predicciones.reduce((sum, p) => {
       const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
-      return sum + (metadatos.tiempo_atencion_perdido_horas || 0);
+      const tiempo = p.tiempo_atencion_perdido_horas ?? metadatos.tiempo_atencion_perdido_horas ?? 0;
+      return sum + (Number(tiempo) || 0);
     }, 0);
     const probabilidadPromedio = predicciones.length > 0 
       ? predicciones.reduce((sum, p) => sum + p.probabilidad, 0) / predicciones.length 
@@ -354,10 +363,22 @@ export const obtenerMetricasDirector = async (req, res) => {
     const topCriticas = predicciones
       .map(p => {
         const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
+        const costoEstimado = p.costo_estimado ?? metadatos.costo_estimado ?? 0;
+        const personalNecesario = p.personal_necesario ?? metadatos.personal_necesario ?? 0;
+        const horasHombre = p.horas_hombre_estimadas ?? metadatos.horas_hombre_estimadas ?? 0;
+        const tiempoAtencionPerdido = p.tiempo_atencion_perdido_horas ?? metadatos.tiempo_atencion_perdido_horas ?? 0;
         const score = p.probabilidad * 0.4 + 
                      ((p.pacientes_afectados_estimados || 0) / 100) * 30 + 
-                     ((metadatos.costo_estimado || 0) / 10000) * 30;
-        return { ...p, score, metadatos };
+                     (costoEstimado / 10000) * 30;
+        return { 
+          ...p, 
+          score, 
+          metadatos,
+          costo_estimado: costoEstimado,
+          personal_necesario: personalNecesario,
+          horas_hombre_estimadas: horasHombre,
+          tiempo_atencion_perdido_horas: tiempoAtencionPerdido
+        };
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 15);
@@ -378,10 +399,11 @@ export const obtenerMetricasDirector = async (req, res) => {
           };
         }
         const metadatos = typeof p.metadatos === 'string' ? JSON.parse(p.metadatos) : (p.metadatos || {});
+        const costoEstimado = p.costo_estimado ?? metadatos.costo_estimado ?? 0;
         acc[key].total_predicciones++;
         acc[key].probabilidad_promedio += p.probabilidad;
         acc[key].pacientes_afectados += (p.pacientes_afectados_estimados || 0);
-        acc[key].costo_total += (metadatos.costo_estimado || 0);
+        acc[key].costo_total += costoEstimado;
         return acc;
       }, {});
 

@@ -131,7 +131,7 @@ export default function Analiticas() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Probabilidad Promedio</p>
-              <p className="text-2xl font-bold">{probabilidadPromedio.toFixed(1)}%</p>
+              <p className="text-2xl font-bold">{Number(probabilidadPromedio || 0).toFixed(1)}%</p>
             </div>
             <TrendingUp className="h-8 w-8 text-primary" />
           </div>
@@ -191,21 +191,21 @@ export default function Analiticas() {
             <div>
               <p className="text-sm text-muted-foreground">Tiempo de Atención Perdido</p>
               <p className="text-2xl font-bold">
-                {metricasDirector.resumen?.tiempo_atencion_perdido_horas 
-                  ? `${(metricasDirector.resumen.tiempo_atencion_perdido_horas / 24).toFixed(1)} días`
-                  : "N/A"}
+                {metricasDirector.resumen?.tiempo_atencion_perdido_horas != null && metricasDirector.resumen.tiempo_atencion_perdido_horas > 0
+                  ? `${(Number(metricasDirector.resumen.tiempo_atencion_perdido_horas) / 24).toFixed(1)} días`
+                  : "0.0 días"}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Personal Necesario Total</p>
               <p className="text-2xl font-bold">
-                {metricasDirector.resumen?.personal_necesario_total || 0} personas
+                {metricasDirector.resumen?.personal_necesario_total ?? 0} personas
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Costo Total Estimado</p>
               <p className="text-2xl font-bold">
-                S/ {metricasDirector.resumen?.costo_total_estimado?.toLocaleString() || 0}
+                S/ {(metricasDirector.resumen?.costo_total_estimado ?? 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function Analiticas() {
                             <p className="text-sm text-muted-foreground">{pred.departamento_predicho}</p>
                           )}
                         </div>
-                        <Badge variant="outline">{pred.probabilidad.toFixed(1)}%</Badge>
+                        <Badge variant="outline">{Number(pred.probabilidad || 0).toFixed(1)}%</Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
@@ -249,7 +249,7 @@ export default function Analiticas() {
                         <div>
                           <p className="text-muted-foreground">Costo Est.</p>
                           <p className="font-medium">
-                            S/ {pred.metadatos?.costo_estimado?.toLocaleString() || 0}
+                            S/ {((pred as any).costo_estimado ?? pred.metadatos?.costo_estimado ?? 0).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -269,7 +269,7 @@ export default function Analiticas() {
                       <div className="flex items-center justify-between mb-2">
                         <p className="font-medium">{area.area_nombre}</p>
                         <Badge variant="outline">
-                          {area.probabilidad_promedio.toFixed(1)}%
+                          {Number(area.probabilidad_promedio || 0).toFixed(1)}%
                         </Badge>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm">
@@ -332,7 +332,7 @@ export default function Analiticas() {
                         )}
                       </div>
                       <Badge variant="outline" className="text-lg px-3 py-1">
-                        {pred.probabilidad.toFixed(1)}%
+                        {Number(pred.probabilidad || 0).toFixed(1)}%
                       </Badge>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -358,7 +358,7 @@ export default function Analiticas() {
                     {(pred as any).tiempo_atencion_perdido_horas && (
                       <div className="mt-3 pt-3 border-t">
                         <p className="text-sm text-muted-foreground">
-                          Tiempo de atención perdido: {((pred as any).tiempo_atencion_perdido_horas / 24).toFixed(1)} días
+                          Tiempo de atención perdido: {(Number((pred as any).tiempo_atencion_perdido_horas || 0) / 24).toFixed(1)} días
                         </p>
                       </div>
                     )}
@@ -449,24 +449,24 @@ export default function Analiticas() {
                 <div>
                   <p className="text-sm text-muted-foreground">Personas Promedio</p>
                   <p className="text-2xl font-bold">
-                    {metricasDirector.comparacion_periodo_anterior.personas_promedio 
-                      ? metricasDirector.comparacion_periodo_anterior.personas_promedio.toFixed(1)
+                    {metricasDirector.comparacion_periodo_anterior.personas_promedio != null
+                      ? Number(metricasDirector.comparacion_periodo_anterior.personas_promedio).toFixed(1)
                       : "N/A"}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pacientes Promedio</p>
                   <p className="text-2xl font-bold">
-                    {metricasDirector.comparacion_periodo_anterior.pacientes_promedio 
-                      ? metricasDirector.comparacion_periodo_anterior.pacientes_promedio.toFixed(1)
+                    {metricasDirector.comparacion_periodo_anterior.pacientes_promedio != null
+                      ? Number(metricasDirector.comparacion_periodo_anterior.pacientes_promedio).toFixed(1)
                       : "N/A"}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Tiempo Promedio</p>
                   <p className="text-2xl font-bold">
-                    {metricasDirector.comparacion_periodo_anterior.tiempo_promedio 
-                      ? `${(metricasDirector.comparacion_periodo_anterior.tiempo_promedio / 24).toFixed(1)} días`
+                    {metricasDirector.comparacion_periodo_anterior.tiempo_promedio != null
+                      ? `${(Number(metricasDirector.comparacion_periodo_anterior.tiempo_promedio) / 24).toFixed(1)} días`
                       : "N/A"}
                   </p>
                 </div>

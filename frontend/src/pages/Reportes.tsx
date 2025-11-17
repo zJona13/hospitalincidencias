@@ -100,8 +100,8 @@ const Reportes = () => {
 
   const tiempoResolucionPorArea = reporteData?.distribucion_area?.map(item => ({
     area: item.nombre,
-    tiempo: reporteData.estadisticas?.tiempo_promedio_resolucion ? 
-      (reporteData.estadisticas.tiempo_promedio_resolucion / 24).toFixed(1) : 0,
+    tiempo: reporteData.estadisticas?.tiempo_promedio_resolucion != null ? 
+      (Number(reporteData.estadisticas.tiempo_promedio_resolucion) / 24).toFixed(1) : 0,
   })) || [];
 
   const incidenciasFueraSLA: any[] = []; // TODO: Implementar cuando haya endpoint específico
@@ -484,20 +484,20 @@ const Reportes = () => {
             <div>
               <p className="text-sm text-muted-foreground mb-2">
                 <strong>Tiempo promedio de resolución:</strong>{" "}
-                {reporteData.estadisticas.tiempo_promedio_resolucion
-                  ? `${(reporteData.estadisticas.tiempo_promedio_resolucion / 24).toFixed(1)} días`
+                {reporteData.estadisticas.tiempo_promedio_resolucion != null
+                  ? `${(Number(reporteData.estadisticas.tiempo_promedio_resolucion) / 24).toFixed(1)} días`
                   : "N/A"}
               </p>
               <p className="text-sm text-muted-foreground mb-2">
                 <strong>Personas afectadas promedio:</strong>{" "}
-                {reporteData.estadisticas.personas_promedio
-                  ? reporteData.estadisticas.personas_promedio.toFixed(1)
+                {reporteData.estadisticas.personas_promedio != null
+                  ? Number(reporteData.estadisticas.personas_promedio).toFixed(1)
                   : "N/A"}
               </p>
               <p className="text-sm text-muted-foreground">
                 <strong>Pacientes afectados promedio:</strong>{" "}
-                {reporteData.estadisticas.pacientes_promedio
-                  ? reporteData.estadisticas.pacientes_promedio.toFixed(1)
+                {reporteData.estadisticas.pacientes_promedio != null
+                  ? Number(reporteData.estadisticas.pacientes_promedio).toFixed(1)
                   : "N/A"}
               </p>
             </div>
