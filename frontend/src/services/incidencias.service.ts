@@ -73,6 +73,8 @@ export interface Incidencia {
     } | null;
     fecha_validacion?: string | null;
   };
+  sla?: string | null;
+  tiempoTranscurrido?: string | null;
 }
 
 export interface CrearIncidenciaData {
@@ -146,5 +148,62 @@ export const incidenciasService = {
   }): Promise<void> {
     await api.post(`/incidencias/${codigo}/resolver`, datosResolucion);
   },
+
+  async obtenerRelacionadas(codigo: string): Promise<IncidenciaRelacionada[]> {
+    const response = await api.get(`/incidencias/${codigo}/relacionadas`);
+    return response.data.data;
+  },
+
+  async buscarRelacionadas(criterios: CriteriosRelacionadas): Promise<IncidenciaRelacionada[]> {
+    const response = await api.get('/incidencias/relacionadas', { params: criterios });
+    return response.data.data;
+  },
 };
+
+export interface IncidenciaRelacionada {
+  id: number;
+  codigo: string;
+  titulo: string;
+  descripcion: string;
+  estado: 'abierta' | 'en_progreso' | 'resuelta' | 'cerrada';
+  area?: {
+    id: number;
+    nombre: string;
+  } | null;
+  tipo?: {
+    id: number;
+    nombre: string;
+  } | null;
+  subtipo?: {
+    id: number;
+    nombre: string;
+  } | null;
+  prioridad?: {
+    id: number;
+    nombre: string;
+    color: string;
+  } | null;
+  equipo?: string | null;
+  fechaCreacion: string;
+  reportadoPor?: {
+    id: number;
+    nombre: string;
+    email: string;
+  } | null;
+  resolucion?: {
+    solucion_aplicada: string;
+    pasos_seguidos: string;
+    tiempo_invertido_minutos: number;
+    fecha_resolucion: string;
+  } | null;
+}
+
+export interface CriteriosRelacionadas {
+  tipo_incidencia_id?: number;
+  subtipo_incidencia_id?: number;
+  area_id?: number;
+  equipo?: string;
+  titulo?: string;
+  descripcion?: string;
+}
 

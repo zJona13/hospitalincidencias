@@ -19,6 +19,7 @@ export const listarIncidencias = async (req, res) => {
         t.id as tipo_id, t.nombre as tipo_nombre, t.categoria as tipo_categoria,
         st.id as subtipo_id, st.nombre as subtipo_nombre,
         p.id as prioridad_id, p.nivel as prioridad_nivel, p.nombre as prioridad_nombre, p.color as prioridad_color,
+        p.tiempo_resolucion_horas as tiempo_resolucion_horas_prioridad,
         rp.id as reportado_por_id, rp.nombre as reportado_por_nombre, rp.email as reportado_por_email,
         resp.id as responsable_id, resp.nombre as responsable_nombre, resp.email as responsable_email
       FROM incidencias i
@@ -66,6 +67,51 @@ export const listarIncidencias = async (req, res) => {
     query += ` ORDER BY i.fecha_creacion DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
     
     const [incidencias] = await pool.execute(query, params);
+    
+    // Función auxiliar para formatear SLA
+    const formatearSLA = (horas) => {
+      if (!horas) return null;
+      if (horas < 24) {
+        return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+      } else {
+        const dias = Math.floor(horas / 24);
+        const horasRestantes = horas % 24;
+        if (horasRestantes === 0) {
+          return `${dias} ${dias === 1 ? 'día' : 'días'}`;
+        } else {
+          return `${dias} ${dias === 1 ? 'día' : 'días'} ${horasRestantes} ${horasRestantes === 1 ? 'hora' : 'horas'}`;
+        }
+      }
+    };
+    
+    // Función auxiliar para calcular tiempo transcurrido
+    const calcularTiempoTranscurrido = (fechaCreacion) => {
+      if (!fechaCreacion) return null;
+      const fechaCreacionDate = new Date(fechaCreacion);
+      const ahora = new Date();
+      const diferenciaMs = ahora - fechaCreacionDate;
+      const diferenciaMinutos = Math.floor(diferenciaMs / (1000 * 60));
+      const diferenciaHoras = Math.floor(diferenciaMinutos / 60);
+      const diferenciaDias = Math.floor(diferenciaHoras / 24);
+      
+      if (diferenciaDias > 0) {
+        const horasRestantes = diferenciaHoras % 24;
+        if (horasRestantes === 0) {
+          return `${diferenciaDias} ${diferenciaDias === 1 ? 'día' : 'días'}`;
+        } else {
+          return `${diferenciaDias} ${diferenciaDias === 1 ? 'día' : 'días'} ${horasRestantes} ${horasRestantes === 1 ? 'hora' : 'horas'}`;
+        }
+      } else if (diferenciaHoras > 0) {
+        const minutosRestantes = diferenciaMinutos % 60;
+        if (minutosRestantes === 0) {
+          return `${diferenciaHoras} ${diferenciaHoras === 1 ? 'hora' : 'horas'}`;
+        } else {
+          return `${diferenciaHoras} ${diferenciaHoras === 1 ? 'hora' : 'horas'} ${minutosRestantes} ${minutosRestantes === 1 ? 'min' : 'min'}`;
+        }
+      } else {
+        return `${diferenciaMinutos} ${diferenciaMinutos === 1 ? 'min' : 'min'}`;
+      }
+    };
     
     // Formatear resultados
     const incidenciasFormateadas = incidencias.map(inc => ({
@@ -121,7 +167,9 @@ export const listarIncidencias = async (req, res) => {
         vencimiento: inc.fecha_vencimiento,
         resolucion: inc.fecha_resolucion,
         cierre: inc.fecha_cierre
-      }
+      },
+      sla: formatearSLA(inc.tiempo_resolucion_horas_prioridad),
+      tiempoTranscurrido: calcularTiempoTranscurrido(inc.fecha_creacion)
     }));
     
     res.json({
@@ -152,7 +200,8 @@ export const obtenerIncidencia = async (req, res) => {
         t.id as tipo_id, t.nombre as tipo_nombre, t.categoria as tipo_categoria, t.color as tipo_color, t.icono as tipo_icono,
         st.id as subtipo_id, st.nombre as subtipo_nombre,
         p.id as prioridad_id, p.nivel as prioridad_nivel, p.nombre as prioridad_nombre, p.color as prioridad_color,
-        p.tiempo_respuesta_minutos, p.tiempo_resolucion_horas,
+        p.tiempo_respuesta_minutos as tiempo_respuesta_minutos_prioridad, 
+        p.tiempo_resolucion_horas as tiempo_resolucion_horas_prioridad,
         rp.id as reportado_por_id, rp.nombre as reportado_por_nombre, rp.email as reportado_por_email,
         resp.id as responsable_id, resp.nombre as responsable_nombre, resp.email as responsable_email
       FROM incidencias i
@@ -176,6 +225,65 @@ export const obtenerIncidencia = async (req, res) => {
     
     const inc = incidencias[0];
     
+    // Calcular SLA y tiempo transcurrido
+    let sla = null;
+    let tiempoTranscurrido = null;
+    
+    // Debug: verificar valores
+    console.log('🔍 Debug obtenerIncidencia:', {
+      codigo: inc.codigo,
+      tiempo_resolucion_horas_prioridad: inc.tiempo_resolucion_horas_prioridad,
+      fecha_creacion: inc.fecha_creacion,
+      tipo_tiempo_resolucion: typeof inc.tiempo_resolucion_horas_prioridad
+    });
+    
+    // Usar el tiempo de resolución de la prioridad
+    const tiempoResolucionHoras = inc.tiempo_resolucion_horas_prioridad;
+    
+    // Calcular SLA si hay tiempo_resolucion_horas
+    if (tiempoResolucionHoras != null && tiempoResolucionHoras !== undefined) {
+      const horas = Number(tiempoResolucionHoras);
+      if (horas < 24) {
+        sla = `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+      } else {
+        const dias = Math.floor(horas / 24);
+        const horasRestantes = horas % 24;
+        if (horasRestantes === 0) {
+          sla = `${dias} ${dias === 1 ? 'día' : 'días'}`;
+        } else {
+          sla = `${dias} ${dias === 1 ? 'día' : 'días'} ${horasRestantes} ${horasRestantes === 1 ? 'hora' : 'horas'}`;
+        }
+      }
+    }
+    
+    // Calcular tiempo transcurrido siempre que haya fecha de creación
+    if (inc.fecha_creacion) {
+      const fechaCreacion = new Date(inc.fecha_creacion);
+      const ahora = new Date();
+      const diferenciaMs = ahora - fechaCreacion;
+      const diferenciaMinutos = Math.floor(diferenciaMs / (1000 * 60));
+      const diferenciaHoras = Math.floor(diferenciaMinutos / 60);
+      const diferenciaDias = Math.floor(diferenciaHoras / 24);
+      
+      if (diferenciaDias > 0) {
+        const horasRestantes = diferenciaHoras % 24;
+        if (horasRestantes === 0) {
+          tiempoTranscurrido = `${diferenciaDias} ${diferenciaDias === 1 ? 'día' : 'días'}`;
+        } else {
+          tiempoTranscurrido = `${diferenciaDias} ${diferenciaDias === 1 ? 'día' : 'días'} ${horasRestantes} ${horasRestantes === 1 ? 'hora' : 'horas'}`;
+        }
+      } else if (diferenciaHoras > 0) {
+        const minutosRestantes = diferenciaMinutos % 60;
+        if (minutosRestantes === 0) {
+          tiempoTranscurrido = `${diferenciaHoras} ${diferenciaHoras === 1 ? 'hora' : 'horas'}`;
+        } else {
+          tiempoTranscurrido = `${diferenciaHoras} ${diferenciaHoras === 1 ? 'hora' : 'horas'} ${minutosRestantes} ${minutosRestantes === 1 ? 'min' : 'min'}`;
+        }
+      } else {
+        tiempoTranscurrido = `${diferenciaMinutos} ${diferenciaMinutos === 1 ? 'min' : 'min'}`;
+      }
+    }
+
     const incidencia = {
       id: inc.id,
       codigo: inc.codigo,
@@ -207,8 +315,8 @@ export const obtenerIncidencia = async (req, res) => {
         nivel: inc.prioridad_nivel,
         nombre: inc.prioridad_nombre,
         color: inc.prioridad_color,
-        tiempoRespuestaMinutos: inc.tiempo_respuesta_minutos,
-        tiempoResolucionHoras: inc.tiempo_resolucion_horas
+        tiempoRespuestaMinutos: inc.tiempo_respuesta_minutos_prioridad,
+        tiempoResolucionHoras: inc.tiempo_resolucion_horas_prioridad
       } : null,
       reportadoPor: inc.reportado_por_id ? {
         id: inc.reportado_por_id,
@@ -233,8 +341,16 @@ export const obtenerIncidencia = async (req, res) => {
         vencimiento: inc.fecha_vencimiento,
         resolucion: inc.fecha_resolucion,
         cierre: inc.fecha_cierre
-      }
+      },
+      sla: sla,
+      tiempoTranscurrido: tiempoTranscurrido
     };
+    
+    // Debug: verificar valores calculados
+    console.log('✅ Valores calculados:', {
+      sla: incidencia.sla,
+      tiempoTranscurrido: incidencia.tiempoTranscurrido
+    });
 
     // Obtener resolución si existe
     const [resoluciones] = await pool.execute(
@@ -750,6 +866,7 @@ export const misIncidencias = async (req, res) => {
         a.id as area_id, a.nombre as area_nombre,
         t.nombre as tipo_nombre,
         p.nombre as prioridad_nombre, p.color as prioridad_color,
+        p.tiempo_resolucion_horas as tiempo_resolucion_horas_prioridad,
         rp.id as reportado_por_id, rp.nombre as reportado_por_nombre,
         resp.id as responsable_id, resp.nombre as responsable_nombre
       FROM incidencias i
@@ -801,6 +918,51 @@ export const misIncidencias = async (req, res) => {
     
     const [incidencias] = await pool.execute(query, params);
     
+    // Función auxiliar para formatear SLA
+    const formatearSLA = (horas) => {
+      if (!horas) return null;
+      if (horas < 24) {
+        return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+      } else {
+        const dias = Math.floor(horas / 24);
+        const horasRestantes = horas % 24;
+        if (horasRestantes === 0) {
+          return `${dias} ${dias === 1 ? 'día' : 'días'}`;
+        } else {
+          return `${dias} ${dias === 1 ? 'día' : 'días'} ${horasRestantes} ${horasRestantes === 1 ? 'hora' : 'horas'}`;
+        }
+      }
+    };
+    
+    // Función auxiliar para calcular tiempo transcurrido
+    const calcularTiempoTranscurrido = (fechaCreacion) => {
+      if (!fechaCreacion) return null;
+      const fechaCreacionDate = new Date(fechaCreacion);
+      const ahora = new Date();
+      const diferenciaMs = ahora - fechaCreacionDate;
+      const diferenciaMinutos = Math.floor(diferenciaMs / (1000 * 60));
+      const diferenciaHoras = Math.floor(diferenciaMinutos / 60);
+      const diferenciaDias = Math.floor(diferenciaHoras / 24);
+      
+      if (diferenciaDias > 0) {
+        const horasRestantes = diferenciaHoras % 24;
+        if (horasRestantes === 0) {
+          return `${diferenciaDias} ${diferenciaDias === 1 ? 'día' : 'días'}`;
+        } else {
+          return `${diferenciaDias} ${diferenciaDias === 1 ? 'día' : 'días'} ${horasRestantes} ${horasRestantes === 1 ? 'hora' : 'horas'}`;
+        }
+      } else if (diferenciaHoras > 0) {
+        const minutosRestantes = diferenciaMinutos % 60;
+        if (minutosRestantes === 0) {
+          return `${diferenciaHoras} ${diferenciaHoras === 1 ? 'hora' : 'horas'}`;
+        } else {
+          return `${diferenciaHoras} ${diferenciaHoras === 1 ? 'hora' : 'horas'} ${minutosRestantes} ${minutosRestantes === 1 ? 'min' : 'min'}`;
+        }
+      } else {
+        return `${diferenciaMinutos} ${diferenciaMinutos === 1 ? 'min' : 'min'}`;
+      }
+    };
+    
     const incidenciasFormateadas = incidencias.map(inc => ({
       id: inc.id,
       codigo: inc.codigo,
@@ -824,7 +986,9 @@ export const misIncidencias = async (req, res) => {
         id: inc.responsable_id,
         nombre: inc.responsable_nombre
       } : null,
-      fecha: inc.fecha_creacion
+      fecha: inc.fecha_creacion,
+      sla: formatearSLA(inc.tiempo_resolucion_horas_prioridad),
+      tiempoTranscurrido: calcularTiempoTranscurrido(inc.fecha_creacion)
     }));
     
     res.json({
@@ -978,4 +1142,247 @@ export const resolverIncidencia = async (req, res) => {
     });
   }
 };
+
+// Obtener incidencias relacionadas por código de incidencia
+export const obtenerIncidenciasRelacionadas = async (req, res) => {
+  try {
+    console.log('🔍 obtenerIncidenciasRelacionadas llamado con código:', req.params.codigo);
+    const { codigo } = req.params;
+    
+    // Obtener la incidencia actual
+    const [incidencias] = await pool.execute(
+      `SELECT id, tipo_incidencia_id, subtipo_incidencia_id, area_id, equipo, titulo, descripcion, reportado_por_id
+       FROM incidencias WHERE codigo = ?`,
+      [codigo]
+    );
+    
+    if (incidencias.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Incidencia no encontrada'
+      });
+    }
+    
+    const incidencia = incidencias[0];
+    
+    // Buscar incidencias relacionadas usando los criterios
+    const relacionadas = await buscarIncidenciasRelacionadasInterno({
+      tipo_incidencia_id: incidencia.tipo_incidencia_id,
+      subtipo_incidencia_id: incidencia.subtipo_incidencia_id,
+      area_id: incidencia.area_id,
+      equipo: incidencia.equipo,
+      titulo: incidencia.titulo,
+      descripcion: incidencia.descripcion,
+      reportado_por_id: incidencia.reportado_por_id,
+      excluir_id: incidencia.id
+    });
+    
+    res.json({
+      status: 'success',
+      data: relacionadas
+    });
+  } catch (error) {
+    console.error('Error al obtener incidencias relacionadas:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al obtener incidencias relacionadas'
+    });
+  }
+};
+
+// Buscar incidencias relacionadas por criterios
+export const buscarIncidenciasRelacionadas = async (req, res) => {
+  try {
+    const {
+      tipo_incidencia_id,
+      subtipo_incidencia_id,
+      area_id,
+      equipo,
+      titulo,
+      descripcion
+    } = req.query;
+    
+    if (!tipo_incidencia_id && !area_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Se requiere al menos tipo_incidencia_id o area_id'
+      });
+    }
+    
+    const relacionadas = await buscarIncidenciasRelacionadasInterno({
+      tipo_incidencia_id: tipo_incidencia_id ? parseInt(tipo_incidencia_id) : null,
+      subtipo_incidencia_id: subtipo_incidencia_id ? parseInt(subtipo_incidencia_id) : null,
+      area_id: area_id ? parseInt(area_id) : null,
+      equipo: equipo || null,
+      titulo: titulo || null,
+      descripcion: descripcion || null,
+      excluir_id: null
+    });
+    
+    res.json({
+      status: 'success',
+      data: relacionadas
+    });
+  } catch (error) {
+    console.error('Error al buscar incidencias relacionadas:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error al buscar incidencias relacionadas'
+    });
+  }
+};
+
+// Función auxiliar para buscar incidencias relacionadas
+async function buscarIncidenciasRelacionadasInterno(criterios) {
+  const {
+    tipo_incidencia_id,
+    subtipo_incidencia_id,
+    area_id,
+    equipo,
+    titulo,
+    descripcion,
+    reportado_por_id,
+    excluir_id
+  } = criterios;
+  
+  // Preparar términos de búsqueda
+  const palabrasTitulo = titulo ? titulo.split(' ').filter(p => p.length > 3) : [];
+  const termTitulo = palabrasTitulo.length > 0 ? `%${palabrasTitulo[0]}%` : '';
+  const palabrasDesc = descripcion ? descripcion.split(' ').filter(p => p.length > 4) : [];
+  const termDesc = palabrasDesc.length > 0 ? `%${palabrasDesc[0]}%` : '';
+  const equipoLike = equipo ? `%${equipo}%` : '';
+  
+  let query = `
+    SELECT 
+      i.id, i.codigo, i.titulo, i.descripcion, i.estado,
+      i.equipo, i.fecha_creacion, i.fecha_resolucion,
+      a.id as area_id, a.nombre as area_nombre,
+      t.id as tipo_id, t.nombre as tipo_nombre,
+      st.id as subtipo_id, st.nombre as subtipo_nombre,
+      p.id as prioridad_id, p.nombre as prioridad_nombre, p.color as prioridad_color,
+      r.solucion_aplicada, r.pasos_seguidos, r.tiempo_invertido_minutos,
+      r.fecha_resolucion as resolucion_fecha,
+      rp.id as reportado_por_id, rp.nombre as reportado_por_nombre, rp.email as reportado_por_email,
+      (
+        CASE WHEN i.tipo_incidencia_id = ? THEN 10 ELSE 0 END +
+        CASE WHEN i.subtipo_incidencia_id = ? THEN 5 ELSE 0 END +
+        CASE WHEN i.area_id = ? THEN 8 ELSE 0 END +
+        CASE WHEN ? != '' AND i.equipo LIKE ? THEN 7 ELSE 0 END +
+        CASE WHEN ? != '' AND (i.titulo LIKE ? OR i.descripcion LIKE ?) THEN 3 ELSE 0 END +
+        CASE WHEN ? != '' AND i.descripcion LIKE ? THEN 2 ELSE 0 END +
+        CASE WHEN ? != 0 AND i.reportado_por_id = ? THEN 5 ELSE 0 END
+      ) as relevancia_score
+    FROM incidencias i
+    LEFT JOIN areas a ON i.area_id = a.id
+    LEFT JOIN tipos_incidencias t ON i.tipo_incidencia_id = t.id
+    LEFT JOIN subtipos_incidencias st ON i.subtipo_incidencia_id = st.id
+    LEFT JOIN prioridades p ON i.prioridad_id = p.id
+    LEFT JOIN resoluciones_incidencias r ON i.id = r.incidencia_id
+    LEFT JOIN usuarios rp ON i.reportado_por_id = rp.id
+    WHERE 1=1
+  `;
+  
+  const params = [];
+  
+  // Parámetros para el score
+  params.push(tipo_incidencia_id || 0, subtipo_incidencia_id || 0, area_id || 0);
+  params.push(equipoLike, equipoLike); // Para el CASE y el LIKE
+  params.push(termTitulo, termTitulo, termTitulo); // Para el CASE y los dos LIKE
+  params.push(termDesc, termDesc); // Para el CASE y el LIKE
+  params.push(reportado_por_id || 0, reportado_por_id || 0); // Para el CASE del reportado_por_id
+  
+  // Excluir la incidencia actual si se especifica
+  if (excluir_id) {
+    query += ' AND i.id != ?';
+    params.push(excluir_id);
+  }
+  
+  // NOTA: No filtramos obligatoriamente por reportado_por_id aquí
+  // En su lugar, usamos el score de relevancia para priorizar las incidencias
+  // del mismo usuario (ver línea 1274). Esto permite que aparezcan primero
+  // las del mismo usuario, pero si no hay suficientes, también se muestran otras relacionadas.
+  
+  // Criterio 1: Tipo y subtipo
+  if (tipo_incidencia_id) {
+    query += ' AND i.tipo_incidencia_id = ?';
+    params.push(tipo_incidencia_id);
+  }
+  
+  if (subtipo_incidencia_id) {
+    query += ' AND i.subtipo_incidencia_id = ?';
+    params.push(subtipo_incidencia_id);
+  }
+  
+  // Criterio 2: Área y equipo
+  if (area_id) {
+    query += ' AND i.area_id = ?';
+    params.push(area_id);
+  }
+  
+  if (equipo) {
+    query += ' AND i.equipo LIKE ?';
+    params.push(equipoLike);
+  }
+  
+  // Criterio 3: Descripción similar
+  if (titulo && palabrasTitulo.length > 0) {
+    query += ' AND (i.titulo LIKE ? OR i.descripcion LIKE ?)';
+    params.push(termTitulo, termTitulo);
+  }
+  
+  if (descripcion && palabrasDesc.length > 0) {
+    query += ' AND i.descripcion LIKE ?';
+    params.push(termDesc);
+  }
+  
+  // Ordenar por: resueltas primero, luego por score, luego por fecha
+  query += `
+    ORDER BY 
+      CASE WHEN i.estado IN ('resuelta', 'cerrada') THEN 0 ELSE 1 END,
+      relevancia_score DESC,
+      i.fecha_creacion DESC
+    LIMIT 10
+  `;
+  
+  const [resultados] = await pool.execute(query, params);
+  
+  // Formatear resultados
+  return resultados.map(inc => ({
+    id: inc.id,
+    codigo: inc.codigo,
+    titulo: inc.titulo,
+    descripcion: inc.descripcion,
+    estado: inc.estado,
+    area: inc.area_id ? {
+      id: inc.area_id,
+      nombre: inc.area_nombre
+    } : null,
+    tipo: inc.tipo_id ? {
+      id: inc.tipo_id,
+      nombre: inc.tipo_nombre
+    } : null,
+    subtipo: inc.subtipo_id ? {
+      id: inc.subtipo_id,
+      nombre: inc.subtipo_nombre
+    } : null,
+    prioridad: inc.prioridad_id ? {
+      id: inc.prioridad_id,
+      nombre: inc.prioridad_nombre,
+      color: inc.prioridad_color
+    } : null,
+    equipo: inc.equipo,
+    fechaCreacion: inc.fecha_creacion,
+    reportadoPor: inc.reportado_por_id ? {
+      id: inc.reportado_por_id,
+      nombre: inc.reportado_por_nombre,
+      email: inc.reportado_por_email
+    } : null,
+    resolucion: inc.solucion_aplicada ? {
+      solucion_aplicada: inc.solucion_aplicada,
+      pasos_seguidos: inc.pasos_seguidos,
+      tiempo_invertido_minutos: inc.tiempo_invertido_minutos,
+      fecha_resolucion: inc.resolucion_fecha
+    } : null
+  }));
+}
 

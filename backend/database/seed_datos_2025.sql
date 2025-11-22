@@ -8,20 +8,34 @@
 -- 
 -- ⚠️ IMPORTANTE: HeidiSQL NO soporta DELIMITER correctamente desde el editor.
 -- 
+-- ⚠️ IMPORTANTE - CODIFICACIÓN DE CARACTERES:
+-- Para evitar problemas con tildes y caracteres especiales:
+-- 1. En HeidiSQL: Herramientas > Preferencias > Editor > Codificación de archivo: UTF-8
+-- 2. Al abrir el archivo, verifica que esté en UTF-8 (sin BOM)
+-- 3. Si ves símbolos raros, guarda el archivo nuevamente como UTF-8
+-- 4. El script ya incluye SET NAMES utf8mb4 al inicio para configurar la conexión
+-- 
 -- OPCIÓN 1 (RECOMENDADA): Usar línea de comandos MySQL
---   mysql -h [tu_host] -u [usuario] -p hospital_incidencias < seed_datos_2025.sql
+--   mysql -h [tu_host] -u [usuario] -p --default-character-set=utf8mb4 hospital_incidencias < seed_datos_2025.sql
 -- 
 -- OPCIÓN 2: Ejecutar cada bloque individualmente en HeidiSQL:
---   1. Ejecuta SOLO el bloque de "insertar_incidencia_completa" (líneas 45-201)
---   2. Ejecuta SOLO el bloque de "calcular_personas_afectadas" (líneas 207-228)
---   3. Ejecuta SOLO el bloque de "calcular_pacientes_afectados" (líneas 234-255)
---   4. Ejecuta SOLO el bloque de "generar_incidencias_mes" (líneas 261-431)
---   5. Ejecuta SOLO el bloque de "agregar_comentarios_incidencias" (líneas 437-549)
---   6. Finalmente, ejecuta la sección de transacción (líneas 551 hasta el final)
+--   1. PRIMERO: Ejecuta las líneas 26-32 (configuración de charset UTF-8)
+--   2. Ejecuta SOLO el bloque de "insertar_incidencia_completa" (líneas 59-215)
+--   3. Ejecuta SOLO el bloque de "generar_incidencias_mes" (líneas 221-406)
+--   4. Ejecuta SOLO el bloque de "agregar_comentarios_incidencias" (líneas 412-525)
+--   5. Finalmente, ejecuta la sección de transacción (líneas 531 hasta el final)
 -- 
 -- NOTA: Cada bloque debe incluir su DELIMITER $$ al inicio y DELIMITER ; al final
 -- 
 -- =====================================================
+
+-- Configurar codificación UTF-8 para caracteres especiales (tildes, eñes, etc.)
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+SET character_set_connection = utf8mb4;
+SET character_set_client = utf8mb4;
+SET character_set_results = utf8mb4;
+SET collation_connection = utf8mb4_unicode_ci;
 
 USE hospital_incidencias;
 

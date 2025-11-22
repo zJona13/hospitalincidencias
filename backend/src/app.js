@@ -32,6 +32,20 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware para asegurar UTF-8 en todas las respuestas JSON
+app.use((req, res, next) => {
+  // Guardar el método original de res.json
+  const originalJson = res.json;
+  
+  // Sobrescribir res.json para incluir charset UTF-8
+  res.json = function(data) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return originalJson.call(this, data);
+  };
+  
+  next();
+});
+
 // Función para probar la conexión a la base de datos
 async function testDatabaseConnection() {
   try {

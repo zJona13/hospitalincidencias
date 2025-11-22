@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { catalogosService } from "@/services/catalogos.service";
 import { incidenciasService } from "@/services/incidencias.service";
 import { archivosService } from "@/services/archivos.service";
+import { IncidenciasRelacionadas } from "@/components/incidencia/IncidenciasRelacionadas";
 
 const CrearIncidencia = () => {
   const navigate = useNavigate();
@@ -73,6 +74,21 @@ const CrearIncidencia = () => {
   const { data: usuarios = [] } = useQuery({
     queryKey: ['catalogos', 'usuarios'],
     queryFn: () => catalogosService.getUsuarios(),
+  });
+
+  // Buscar incidencias relacionadas cuando hay criterios suficientes
+  const tieneCriterios = !!(formData.tipo_incidencia_id || formData.area_id);
+  const { data: incidenciasRelacionadas = [], isLoading: cargandoRelacionadas } = useQuery({
+    queryKey: ['incidencias', 'relacionadas', formData.tipo_incidencia_id, formData.subtipo_incidencia_id, formData.area_id, formData.equipo, formData.titulo],
+    queryFn: () => incidenciasService.buscarRelacionadas({
+      tipo_incidencia_id: formData.tipo_incidencia_id ? parseInt(formData.tipo_incidencia_id) : undefined,
+      subtipo_incidencia_id: formData.subtipo_incidencia_id ? parseInt(formData.subtipo_incidencia_id) : undefined,
+      area_id: formData.area_id ? parseInt(formData.area_id) : undefined,
+      equipo: formData.equipo || undefined,
+      titulo: formData.titulo || undefined,
+      descripcion: formData.descripcion || undefined,
+    }),
+    enabled: tieneCriterios,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -345,12 +361,12 @@ const CrearIncidencia = () => {
               <div className="pt-4">
                 <h3 className="text-lg font-semibold text-foreground mb-4">Información clínica (opcional)</h3>
                 <div className="space-y-2">
-                  <Label htmlFor="pacienteId">ID de paciente / Código</Label>
+                  <Label htmlFor="paciente_id">ID de paciente / Código</Label>
                   <Input
-                    id="pacienteId"
+                    id="paciente_id"
                     placeholder="Ingresa el código del paciente si aplica"
-                    value={formData.pacienteId}
-                    onChange={(e) => handleChange("pacienteId", e.target.value)}
+                    value={formData.paciente_id}
+                    onChange={(e) => handleChange("paciente_id", e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
                     Solo código o identificador. No incluir información sensible.
@@ -452,6 +468,16 @@ const CrearIncidencia = () => {
                 <li>• Tiempo estimado de respuesta según prioridad</li>
               </ul>
             </Card>
+
+            {/* Incidencias relacionadas */}
+            {tieneCriterios && (
+              <IncidenciasRelacionadas
+                incidencias={incidenciasRelacionadas}
+                isLoading={cargandoRelacionadas}
+                titulo="Antecedentes similares"
+                mostrarLimite={5}
+              />
+            )}
 
             <div className="space-y-3">
               <Button type="submit" className="w-full" disabled={isSubmitting}>
