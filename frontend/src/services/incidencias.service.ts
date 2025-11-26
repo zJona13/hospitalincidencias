@@ -10,36 +10,36 @@ export interface Incidencia {
     id: number;
     codigo: string;
     nombre: string;
-  } | null;
+  } | string | null;
   servicio?: {
     id: number;
     nombre: string;
-  } | null;
+  } | string | null;
   tipo?: {
     id: number;
     nombre: string;
     categoria: string;
-  } | null;
+  } | string | null;
   subtipo?: {
     id: number;
     nombre: string;
-  } | null;
+  } | string | null;
   prioridad?: {
     id: number;
     nivel: string;
     nombre: string;
     color: string;
-  } | null;
+  } | string | null;
   reportadoPor?: {
     id: number;
     nombre: string;
     email: string;
-  } | null;
+  } | string | null;
   responsable?: {
     id: number;
     nombre: string;
     email: string;
-  } | null;
+  } | string | null;
   ubicacion?: {
     piso?: string;
     habitacion?: string;
@@ -75,6 +75,8 @@ export interface Incidencia {
   };
   sla?: string | null;
   tiempoTranscurrido?: string | null;
+  fechaVencimiento?: string;
+  fechaActualizacion?: string;
 }
 
 export interface CrearIncidenciaData {

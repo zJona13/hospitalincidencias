@@ -14,7 +14,7 @@ const router = express.Router();
 router.use(auth);
 
 // Ruta accesible para todos los administradores (TI y General)
-router.get('/reportes-avanzados', requireRole('administrador'), obtenerReportesAvanzados);
+router.get('/reportes-avanzados', requireRole('administrador'), requireAdminType('ti'), obtenerReportesAvanzados);
 
 // Rutas exclusivas del director (requieren admin general)
 router.get('/predicciones', requireRole('administrador'), requireAdminType('general'), obtenerPredicciones);

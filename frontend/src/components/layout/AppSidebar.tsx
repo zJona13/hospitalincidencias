@@ -1,8 +1,8 @@
-import { 
-  LayoutDashboard, 
-  AlertCircle, 
-  List, 
-  UserCircle, 
+import {
+  LayoutDashboard,
+  AlertCircle,
+  List,
+  UserCircle,
   PlusCircle,
   BarChart3,
   Settings,
@@ -32,7 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function AppSidebar() {
   const { open } = useSidebar();
   const { user } = useAuth();
-  
+
   const isAdmin = user?.rol === 'administrador';
   const isAdminTI = isAdmin && user?.tipo_admin === 'ti';
   const isAdminGeneral = isAdmin && user?.tipo_admin === 'general';
@@ -94,7 +94,7 @@ export function AppSidebar() {
               {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
+                    <NavLink
                       to={item.url}
                       className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
@@ -125,7 +125,7 @@ export function AppSidebar() {
                   {incidenciasItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
-                        <NavLink 
+                        <NavLink
                           to={item.url}
                           className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
                           activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
@@ -142,26 +142,29 @@ export function AppSidebar() {
           </Collapsible>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {reportesItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url}
-                      className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {open && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Sección Reportes - Solo Admin TI */}
+        {isAdminTI && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {reportesItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Sección Admin TI */}
         {isAdminTI && (
@@ -181,7 +184,7 @@ export function AppSidebar() {
                     {adminTIItems.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
-                          <NavLink 
+                          <NavLink
                             to={item.url}
                             className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
                             activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
@@ -217,7 +220,7 @@ export function AppSidebar() {
                     {adminGeneralItems.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
-                          <NavLink 
+                          <NavLink
                             to={item.url}
                             className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
                             activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
@@ -253,7 +256,7 @@ export function AppSidebar() {
                     {adminItems.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
-                          <NavLink 
+                          <NavLink
                             to={item.url}
                             className="flex items-center gap-3 hover:bg-sidebar-accent rounded-md transition-colors"
                             activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"

@@ -14,6 +14,11 @@ import {
 } from '../controllers/incidencias.controller.js';
 import { auth } from '../auth.js';
 
+import {
+  validateCrearIncidencia,
+  validateActualizarIncidencia
+} from '../middleware/validators.js';
+
 const router = express.Router();
 
 // Todas las rutas requieren autenticación
@@ -29,8 +34,8 @@ router.get('/:codigo/relacionadas', obtenerIncidenciasRelacionadas);
 
 // Ruta genérica con parámetro (última)
 router.get('/:codigo', obtenerIncidencia);
-router.post('/', crearIncidencia);
-router.put('/:codigo', actualizarIncidencia);
+router.post('/', validateCrearIncidencia, crearIncidencia);
+router.put('/:codigo', validateActualizarIncidencia, actualizarIncidencia);
 router.patch('/:codigo/estado', cambiarEstado);
 router.patch('/:codigo/prioridad', cambiarPrioridad);
 router.patch('/:codigo/reasignar', reasignar);
