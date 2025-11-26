@@ -7,7 +7,7 @@ import { crearNotificacion, notificarAsignacion, notificarCambioEstado } from '.
 export const listarIncidencias = async (req, res) => {
   try {
     const { area_id, estado, prioridad_id, search, limit = 50, offset = 0 } = req.query;
-    
+
     let query = `
       SELECT 
         i.id, i.codigo, i.titulo, i.descripcion, i.estado,
@@ -32,42 +32,42 @@ export const listarIncidencias = async (req, res) => {
       LEFT JOIN usuarios resp ON i.responsable_id = resp.id
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     if (area_id) {
       query += ' AND i.area_id = ?';
       params.push(area_id);
     }
-    
+
     if (estado) {
       query += ' AND i.estado = ?';
       params.push(estado);
     }
-    
+
     if (prioridad_id) {
       query += ' AND i.prioridad_id = ?';
       params.push(prioridad_id);
     }
-    
+
     if (search) {
       query += ' AND (i.codigo LIKE ? OR i.titulo LIKE ? OR i.descripcion LIKE ?)';
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
-    
+
     // LIMIT y OFFSET no pueden ser placeholders en MySQL, deben ser valores directos
     const limitNum = parseInt(limit) || 50;
     const offsetNum = parseInt(offset) || 0;
-    
+
     // Validar que sean números válidos y positivos
     const safeLimit = Math.max(1, Math.min(limitNum, 1000)); // Máximo 1000
     const safeOffset = Math.max(0, offsetNum);
-    
+
     query += ` ORDER BY i.fecha_creacion DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
-    
+
     const [incidencias] = await pool.execute(query, params);
-    
+
     // Función auxiliar para formatear SLA
     const formatearSLA = (horas) => {
       if (!horas) return null;
@@ -83,7 +83,7 @@ export const listarIncidencias = async (req, res) => {
         }
       }
     };
-    
+
     // Función auxiliar para calcular tiempo transcurrido
     const calcularTiempoTranscurrido = (fechaCreacion) => {
       if (!fechaCreacion) return null;
@@ -93,7 +93,7 @@ export const listarIncidencias = async (req, res) => {
       const diferenciaMinutos = Math.floor(diferenciaMs / (1000 * 60));
       const diferenciaHoras = Math.floor(diferenciaMinutos / 60);
       const diferenciaDias = Math.floor(diferenciaHoras / 24);
-      
+
       if (diferenciaDias > 0) {
         const horasRestantes = diferenciaHoras % 24;
         if (horasRestantes === 0) {
@@ -112,7 +112,7 @@ export const listarIncidencias = async (req, res) => {
         return `${diferenciaMinutos} ${diferenciaMinutos === 1 ? 'min' : 'min'}`;
       }
     };
-    
+
     // Formatear resultados
     const incidenciasFormateadas = incidencias.map(inc => ({
       id: inc.id,
@@ -171,7 +171,7 @@ export const listarIncidencias = async (req, res) => {
       sla: formatearSLA(inc.tiempo_resolucion_horas_prioridad),
       tiempoTranscurrido: calcularTiempoTranscurrido(inc.fecha_creacion)
     }));
-    
+
     res.json({
       status: 'success',
       data: incidenciasFormateadas
@@ -191,7 +191,7 @@ export const listarIncidencias = async (req, res) => {
 export const obtenerIncidencia = async (req, res) => {
   try {
     const { codigo } = req.params;
-    
+
     const [incidencias] = await pool.execute(
       `SELECT 
         i.*,
@@ -215,20 +215,20 @@ export const obtenerIncidencia = async (req, res) => {
       WHERE i.codigo = ?`,
       [codigo]
     );
-    
+
     if (incidencias.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Incidencia no encontrada'
       });
     }
-    
+
     const inc = incidencias[0];
-    
+
     // Calcular SLA y tiempo transcurrido
     let sla = null;
     let tiempoTranscurrido = null;
-    
+
     // Debug: verificar valores
     console.log('🔍 Debug obtenerIncidencia:', {
       codigo: inc.codigo,
@@ -236,10 +236,10 @@ export const obtenerIncidencia = async (req, res) => {
       fecha_creacion: inc.fecha_creacion,
       tipo_tiempo_resolucion: typeof inc.tiempo_resolucion_horas_prioridad
     });
-    
+
     // Usar el tiempo de resolución de la prioridad
     const tiempoResolucionHoras = inc.tiempo_resolucion_horas_prioridad;
-    
+
     // Calcular SLA si hay tiempo_resolucion_horas
     if (tiempoResolucionHoras != null && tiempoResolucionHoras !== undefined) {
       const horas = Number(tiempoResolucionHoras);
@@ -255,7 +255,7 @@ export const obtenerIncidencia = async (req, res) => {
         }
       }
     }
-    
+
     // Calcular tiempo transcurrido siempre que haya fecha de creación
     if (inc.fecha_creacion) {
       const fechaCreacion = new Date(inc.fecha_creacion);
@@ -264,7 +264,7 @@ export const obtenerIncidencia = async (req, res) => {
       const diferenciaMinutos = Math.floor(diferenciaMs / (1000 * 60));
       const diferenciaHoras = Math.floor(diferenciaMinutos / 60);
       const diferenciaDias = Math.floor(diferenciaHoras / 24);
-      
+
       if (diferenciaDias > 0) {
         const horasRestantes = diferenciaHoras % 24;
         if (horasRestantes === 0) {
@@ -345,7 +345,7 @@ export const obtenerIncidencia = async (req, res) => {
       sla: sla,
       tiempoTranscurrido: tiempoTranscurrido
     };
-    
+
     // Debug: verificar valores calculados
     console.log('✅ Valores calculados:', {
       sla: incidencia.sla,
@@ -388,7 +388,7 @@ export const obtenerIncidencia = async (req, res) => {
         fecha_validacion: res.fecha_validacion
       };
     }
-    
+
     res.json({
       status: 'success',
       data: incidencia
@@ -421,7 +421,7 @@ export const crearIncidencia = async (req, res) => {
       equipo,
       paciente_id
     } = req.body;
-    
+
     // Validaciones básicas
     if (!titulo || !descripcion || !area_id || !tipo_incidencia_id || !prioridad_id) {
       return res.status(400).json({
@@ -429,23 +429,23 @@ export const crearIncidencia = async (req, res) => {
         message: 'Faltan campos requeridos: titulo, descripcion, area_id, tipo_incidencia_id, prioridad_id'
       });
     }
-    
+
     // Generar código único
     const codigo = await generarCodigoIncidencia();
-    
+
     // Obtener información de la prioridad para calcular fecha de vencimiento
     const [prioridades] = await pool.execute(
       'SELECT tiempo_resolucion_horas FROM prioridades WHERE id = ?',
       [prioridad_id]
     );
-    
+
     let fechaVencimiento = null;
     if (prioridades.length > 0) {
       const horas = prioridades[0].tiempo_resolucion_horas;
       fechaVencimiento = new Date();
       fechaVencimiento.setHours(fechaVencimiento.getHours() + horas);
     }
-    
+
     // Insertar incidencia
     const [result] = await pool.execute(
       `INSERT INTO incidencias 
@@ -461,9 +461,9 @@ export const crearIncidencia = async (req, res) => {
         paciente_id || null, fechaVencimiento
       ]
     );
-    
+
     const incidenciaId = result.insertId;
-    
+
     // Registrar en historial
     await registrarHistorial(
       incidenciaId,
@@ -471,14 +471,14 @@ export const crearIncidencia = async (req, res) => {
       userId,
       `Incidencia creada: ${titulo}`
     );
-    
+
     // Notificar al responsable si fue asignado
     if (responsable_id) {
       const [usuarios] = await pool.execute('SELECT nombre FROM usuarios WHERE id = ?', [userId]);
       const nombreUsuario = usuarios[0]?.nombre || 'Usuario';
-      
+
       await notificarAsignacion(responsable_id, codigo, titulo, incidenciaId);
-      
+
       await registrarHistorial(
         incidenciaId,
         'asignacion',
@@ -488,7 +488,7 @@ export const crearIncidencia = async (req, res) => {
         null
       );
     }
-    
+
     // Obtener la incidencia creada
     const [incidencias] = await pool.execute(
       `SELECT i.*, a.nombre as area_nombre, t.nombre as tipo_nombre, p.nombre as prioridad_nombre
@@ -499,7 +499,7 @@ export const crearIncidencia = async (req, res) => {
        WHERE i.id = ?`,
       [incidenciaId]
     );
-    
+
     res.status(201).json({
       status: 'success',
       message: 'Incidencia creada exitosamente',
@@ -523,50 +523,82 @@ export const actualizarIncidencia = async (req, res) => {
   try {
     const { codigo } = req.params;
     const userId = req.user.id;
+    const userRole = req.user.rol;
+    const adminType = req.user.tipo_admin;
+
     const camposPermitidos = [
       'titulo', 'descripcion', 'area_id', 'servicio_id', 'tipo_incidencia_id',
       'subtipo_incidencia_id', 'piso', 'habitacion', 'cama', 'equipo', 'paciente_id'
     ];
-    
+
     const camposActualizar = {};
     Object.keys(req.body).forEach(key => {
       if (camposPermitidos.includes(key) && req.body[key] !== undefined) {
         camposActualizar[key] = req.body[key];
       }
     });
-    
+
     if (Object.keys(camposActualizar).length === 0) {
       return res.status(400).json({
         status: 'error',
         message: 'No hay campos para actualizar'
       });
     }
-    
-    // Obtener incidencia actual
+
+    // Obtener incidencia actual para verificar permisos
     const [incidencias] = await pool.execute(
-      'SELECT id FROM incidencias WHERE codigo = ?',
+      'SELECT id, estado, reportado_por_id, responsable_id FROM incidencias WHERE codigo = ?',
       [codigo]
     );
-    
+
     if (incidencias.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Incidencia no encontrada'
       });
     }
-    
-    const incidenciaId = incidencias[0].id;
-    
+
+    const incidencia = incidencias[0];
+    const incidenciaId = incidencia.id;
+
+    // Lógica de permisos
+    let puedeEditar = false;
+    const esAdminTI = userRole === 'administrador' && adminType === 'ti';
+    const esAdminGeneral = userRole === 'administrador' && adminType === 'general';
+    const esResponsable = incidencia.responsable_id === userId;
+    const esCreador = incidencia.reportado_por_id === userId;
+
+    // Si está resuelta o cerrada
+    if (['resuelta', 'cerrada'].includes(incidencia.estado)) {
+      // Solo Admin TI, Admin General y Responsable pueden editar
+      if (esAdminTI || esAdminGeneral || esResponsable) {
+        puedeEditar = true;
+      }
+    } else {
+      // Si está abierta o en progreso
+      // Admin TI, Admin General, Responsable y Creador pueden editar
+      if (esAdminTI || esAdminGeneral || esResponsable || esCreador) {
+        puedeEditar = true;
+      }
+    }
+
+    if (!puedeEditar) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'No tienes permisos para editar esta incidencia en su estado actual'
+      });
+    }
+
     // Construir query de actualización
     const setClause = Object.keys(camposActualizar).map(key => `${key} = ?`).join(', ');
     const valores = Object.values(camposActualizar);
     valores.push(codigo);
-    
+
     await pool.execute(
       `UPDATE incidencias SET ${setClause}, fecha_actualizacion = CURRENT_TIMESTAMP WHERE codigo = ?`,
       valores
     );
-    
+
     // Registrar en historial
     await registrarHistorial(
       incidenciaId,
@@ -574,7 +606,7 @@ export const actualizarIncidencia = async (req, res) => {
       userId,
       `Incidencia actualizada: ${Object.keys(camposActualizar).join(', ')}`
     );
-    
+
     res.json({
       status: 'success',
       message: 'Incidencia actualizada exitosamente'
@@ -594,7 +626,7 @@ export const cambiarEstado = async (req, res) => {
     const { codigo } = req.params;
     const { estado } = req.body;
     const userId = req.user.id;
-    
+
     const estadosValidos = ['abierta', 'en_progreso', 'resuelta', 'cerrada'];
     if (!estadosValidos.includes(estado)) {
       return res.status(400).json({
@@ -602,30 +634,30 @@ export const cambiarEstado = async (req, res) => {
         message: `Estado inválido. Debe ser uno de: ${estadosValidos.join(', ')}`
       });
     }
-    
+
     // Obtener incidencia actual
     const [incidencias] = await pool.execute(
       'SELECT id, estado, responsable_id FROM incidencias WHERE codigo = ?',
       [codigo]
     );
-    
+
     if (incidencias.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Incidencia no encontrada'
       });
     }
-    
+
     const incidencia = incidencias[0];
     const estadoAnterior = incidencia.estado;
-    
+
     if (estadoAnterior === estado) {
       return res.json({
         status: 'success',
         message: 'El estado ya es el mismo'
       });
     }
-    
+
     // Actualizar estado
     const camposActualizar = { estado };
     if (estado === 'resuelta' && !incidencia.fecha_resolucion) {
@@ -634,16 +666,16 @@ export const cambiarEstado = async (req, res) => {
     if (estado === 'cerrada' && !incidencia.fecha_cierre) {
       camposActualizar.fecha_cierre = new Date();
     }
-    
+
     const setClause = Object.keys(camposActualizar).map(key => `${key} = ?`).join(', ');
     const valores = Object.values(camposActualizar);
     valores.push(codigo);
-    
+
     await pool.execute(
       `UPDATE incidencias SET ${setClause}, fecha_actualizacion = CURRENT_TIMESTAMP WHERE codigo = ?`,
       valores
     );
-    
+
     // Registrar en historial
     await registrarHistorial(
       incidencia.id,
@@ -653,11 +685,11 @@ export const cambiarEstado = async (req, res) => {
       estadoAnterior,
       estado
     );
-    
+
     // Notificar al responsable y al que reportó
     const usuariosNotificar = [];
     if (incidencia.responsable_id) usuariosNotificar.push(incidencia.responsable_id);
-    
+
     // Obtener el que reportó
     const [reportadores] = await pool.execute(
       'SELECT reportado_por_id FROM incidencias WHERE id = ?',
@@ -666,11 +698,11 @@ export const cambiarEstado = async (req, res) => {
     if (reportadores.length > 0 && reportadores[0].reportado_por_id) {
       usuariosNotificar.push(reportadores[0].reportado_por_id);
     }
-    
+
     for (const usuarioId of usuariosNotificar) {
       await notificarCambioEstado(usuarioId, codigo, estadoAnterior, estado, incidencia.id);
     }
-    
+
     res.json({
       status: 'success',
       message: 'Estado actualizado exitosamente'
@@ -690,54 +722,54 @@ export const cambiarPrioridad = async (req, res) => {
     const { codigo } = req.params;
     const { prioridad_id } = req.body;
     const userId = req.user.id;
-    
+
     if (!prioridad_id) {
       return res.status(400).json({
         status: 'error',
         message: 'prioridad_id es requerido'
       });
     }
-    
+
     // Verificar que la prioridad existe
     const [prioridades] = await pool.execute(
       'SELECT id, nombre, tiempo_resolucion_horas FROM prioridades WHERE id = ?',
       [prioridad_id]
     );
-    
+
     if (prioridades.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Prioridad no encontrada'
       });
     }
-    
+
     // Obtener incidencia
     const [incidencias] = await pool.execute(
       'SELECT id, prioridad_id FROM incidencias WHERE codigo = ?',
       [codigo]
     );
-    
+
     if (incidencias.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Incidencia no encontrada'
       });
     }
-    
+
     const incidencia = incidencias[0];
-    
+
     if (incidencia.prioridad_id === parseInt(prioridad_id)) {
       return res.json({
         status: 'success',
         message: 'La prioridad ya es la misma'
       });
     }
-    
+
     // Calcular nueva fecha de vencimiento
     const horas = prioridades[0].tiempo_resolucion_horas;
     const fechaVencimiento = new Date();
     fechaVencimiento.setHours(fechaVencimiento.getHours() + horas);
-    
+
     // Actualizar
     await pool.execute(
       `UPDATE incidencias 
@@ -745,7 +777,7 @@ export const cambiarPrioridad = async (req, res) => {
        WHERE codigo = ?`,
       [prioridad_id, fechaVencimiento, codigo]
     );
-    
+
     // Registrar en historial
     await registrarHistorial(
       incidencia.id,
@@ -755,7 +787,7 @@ export const cambiarPrioridad = async (req, res) => {
       null,
       prioridades[0].nombre
     );
-    
+
     res.json({
       status: 'success',
       message: 'Prioridad actualizada exitosamente'
@@ -775,50 +807,50 @@ export const reasignar = async (req, res) => {
     const { codigo } = req.params;
     const { responsable_id } = req.body;
     const userId = req.user.id;
-    
+
     if (!responsable_id) {
       return res.status(400).json({
         status: 'error',
         message: 'responsable_id es requerido'
       });
     }
-    
+
     // Verificar que el usuario existe
     const [usuarios] = await pool.execute(
       'SELECT id, nombre FROM usuarios WHERE id = ? AND activo = TRUE',
       [responsable_id]
     );
-    
+
     if (usuarios.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Usuario responsable no encontrado'
       });
     }
-    
+
     // Obtener incidencia
     const [incidencias] = await pool.execute(
       'SELECT id, responsable_id, titulo FROM incidencias WHERE codigo = ?',
       [codigo]
     );
-    
+
     if (incidencias.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Incidencia no encontrada'
       });
     }
-    
+
     const incidencia = incidencias[0];
     const responsableAnterior = incidencia.responsable_id;
-    
+
     if (responsableAnterior === parseInt(responsable_id)) {
       return res.json({
         status: 'success',
         message: 'El responsable ya es el mismo'
       });
     }
-    
+
     // Actualizar
     await pool.execute(
       `UPDATE incidencias 
@@ -826,7 +858,7 @@ export const reasignar = async (req, res) => {
        WHERE codigo = ?`,
       [responsable_id, codigo]
     );
-    
+
     // Registrar en historial
     await registrarHistorial(
       incidencia.id,
@@ -836,10 +868,10 @@ export const reasignar = async (req, res) => {
       null,
       null
     );
-    
+
     // Notificar al nuevo responsable
     await notificarAsignacion(responsable_id, codigo, incidencia.titulo, incidencia.id);
-    
+
     res.json({
       status: 'success',
       message: 'Incidencia reasignada exitosamente'
@@ -858,7 +890,7 @@ export const misIncidencias = async (req, res) => {
   try {
     const userId = req.user.id;
     const { tipo = 'todas', area_id, estado, prioridad_id, search } = req.query;
-    
+
     let query = `
       SELECT 
         i.id, i.codigo, i.titulo, i.descripcion, i.estado,
@@ -877,9 +909,9 @@ export const misIncidencias = async (req, res) => {
       LEFT JOIN usuarios resp ON i.responsable_id = resp.id
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     // Filtrar por tipo: creadas, asignadas, o todas
     if (tipo === 'creadas') {
       query += ' AND i.reportado_por_id = ?';
@@ -892,32 +924,32 @@ export const misIncidencias = async (req, res) => {
       query += ' AND (i.reportado_por_id = ? OR i.responsable_id = ?)';
       params.push(userId, userId);
     }
-    
+
     if (area_id) {
       query += ' AND i.area_id = ?';
       params.push(area_id);
     }
-    
+
     if (estado) {
       query += ' AND i.estado = ?';
       params.push(estado);
     }
-    
+
     if (prioridad_id) {
       query += ' AND i.prioridad_id = ?';
       params.push(prioridad_id);
     }
-    
+
     if (search) {
       query += ' AND (i.codigo LIKE ? OR i.titulo LIKE ? OR i.descripcion LIKE ?)';
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
-    
+
     query += ' ORDER BY i.fecha_creacion DESC';
-    
+
     const [incidencias] = await pool.execute(query, params);
-    
+
     // Función auxiliar para formatear SLA
     const formatearSLA = (horas) => {
       if (!horas) return null;
@@ -933,7 +965,7 @@ export const misIncidencias = async (req, res) => {
         }
       }
     };
-    
+
     // Función auxiliar para calcular tiempo transcurrido
     const calcularTiempoTranscurrido = (fechaCreacion) => {
       if (!fechaCreacion) return null;
@@ -943,7 +975,7 @@ export const misIncidencias = async (req, res) => {
       const diferenciaMinutos = Math.floor(diferenciaMs / (1000 * 60));
       const diferenciaHoras = Math.floor(diferenciaMinutos / 60);
       const diferenciaDias = Math.floor(diferenciaHoras / 24);
-      
+
       if (diferenciaDias > 0) {
         const horasRestantes = diferenciaHoras % 24;
         if (horasRestantes === 0) {
@@ -962,7 +994,7 @@ export const misIncidencias = async (req, res) => {
         return `${diferenciaMinutos} ${diferenciaMinutos === 1 ? 'min' : 'min'}`;
       }
     };
-    
+
     const incidenciasFormateadas = incidencias.map(inc => ({
       id: inc.id,
       codigo: inc.codigo,
@@ -990,7 +1022,7 @@ export const misIncidencias = async (req, res) => {
       sla: formatearSLA(inc.tiempo_resolucion_horas_prioridad),
       tiempoTranscurrido: calcularTiempoTranscurrido(inc.fecha_creacion)
     }));
-    
+
     res.json({
       status: 'success',
       data: incidenciasFormateadas
@@ -1148,23 +1180,23 @@ export const obtenerIncidenciasRelacionadas = async (req, res) => {
   try {
     console.log('🔍 obtenerIncidenciasRelacionadas llamado con código:', req.params.codigo);
     const { codigo } = req.params;
-    
+
     // Obtener la incidencia actual
     const [incidencias] = await pool.execute(
       `SELECT id, tipo_incidencia_id, subtipo_incidencia_id, area_id, equipo, titulo, descripcion, reportado_por_id
        FROM incidencias WHERE codigo = ?`,
       [codigo]
     );
-    
+
     if (incidencias.length === 0) {
       return res.status(404).json({
         status: 'error',
         message: 'Incidencia no encontrada'
       });
     }
-    
+
     const incidencia = incidencias[0];
-    
+
     // Buscar incidencias relacionadas usando los criterios
     const relacionadas = await buscarIncidenciasRelacionadasInterno({
       tipo_incidencia_id: incidencia.tipo_incidencia_id,
@@ -1176,7 +1208,7 @@ export const obtenerIncidenciasRelacionadas = async (req, res) => {
       reportado_por_id: incidencia.reportado_por_id,
       excluir_id: incidencia.id
     });
-    
+
     res.json({
       status: 'success',
       data: relacionadas
@@ -1201,14 +1233,14 @@ export const buscarIncidenciasRelacionadas = async (req, res) => {
       titulo,
       descripcion
     } = req.query;
-    
+
     if (!tipo_incidencia_id && !area_id) {
       return res.status(400).json({
         status: 'error',
         message: 'Se requiere al menos tipo_incidencia_id o area_id'
       });
     }
-    
+
     const relacionadas = await buscarIncidenciasRelacionadasInterno({
       tipo_incidencia_id: tipo_incidencia_id ? parseInt(tipo_incidencia_id) : null,
       subtipo_incidencia_id: subtipo_incidencia_id ? parseInt(subtipo_incidencia_id) : null,
@@ -1218,7 +1250,7 @@ export const buscarIncidenciasRelacionadas = async (req, res) => {
       descripcion: descripcion || null,
       excluir_id: null
     });
-    
+
     res.json({
       status: 'success',
       data: relacionadas
@@ -1244,14 +1276,14 @@ async function buscarIncidenciasRelacionadasInterno(criterios) {
     reportado_por_id,
     excluir_id
   } = criterios;
-  
+
   // Preparar términos de búsqueda
   const palabrasTitulo = titulo ? titulo.split(' ').filter(p => p.length > 3) : [];
   const termTitulo = palabrasTitulo.length > 0 ? `%${palabrasTitulo[0]}%` : '';
   const palabrasDesc = descripcion ? descripcion.split(' ').filter(p => p.length > 4) : [];
   const termDesc = palabrasDesc.length > 0 ? `%${palabrasDesc[0]}%` : '';
   const equipoLike = equipo ? `%${equipo}%` : '';
-  
+
   let query = `
     SELECT 
       i.id, i.codigo, i.titulo, i.descripcion, i.estado,
@@ -1281,60 +1313,60 @@ async function buscarIncidenciasRelacionadasInterno(criterios) {
     LEFT JOIN usuarios rp ON i.reportado_por_id = rp.id
     WHERE 1=1
   `;
-  
+
   const params = [];
-  
+
   // Parámetros para el score
   params.push(tipo_incidencia_id || 0, subtipo_incidencia_id || 0, area_id || 0);
   params.push(equipoLike, equipoLike); // Para el CASE y el LIKE
   params.push(termTitulo, termTitulo, termTitulo); // Para el CASE y los dos LIKE
   params.push(termDesc, termDesc); // Para el CASE y el LIKE
   params.push(reportado_por_id || 0, reportado_por_id || 0); // Para el CASE del reportado_por_id
-  
+
   // Excluir la incidencia actual si se especifica
   if (excluir_id) {
     query += ' AND i.id != ?';
     params.push(excluir_id);
   }
-  
+
   // NOTA: No filtramos obligatoriamente por reportado_por_id aquí
   // En su lugar, usamos el score de relevancia para priorizar las incidencias
   // del mismo usuario (ver línea 1274). Esto permite que aparezcan primero
   // las del mismo usuario, pero si no hay suficientes, también se muestran otras relacionadas.
-  
+
   // Criterio 1: Tipo y subtipo
   if (tipo_incidencia_id) {
     query += ' AND i.tipo_incidencia_id = ?';
     params.push(tipo_incidencia_id);
   }
-  
+
   if (subtipo_incidencia_id) {
     query += ' AND i.subtipo_incidencia_id = ?';
     params.push(subtipo_incidencia_id);
   }
-  
+
   // Criterio 2: Área y equipo
   if (area_id) {
     query += ' AND i.area_id = ?';
     params.push(area_id);
   }
-  
+
   if (equipo) {
     query += ' AND i.equipo LIKE ?';
     params.push(equipoLike);
   }
-  
+
   // Criterio 3: Descripción similar
   if (titulo && palabrasTitulo.length > 0) {
     query += ' AND (i.titulo LIKE ? OR i.descripcion LIKE ?)';
     params.push(termTitulo, termTitulo);
   }
-  
+
   if (descripcion && palabrasDesc.length > 0) {
     query += ' AND i.descripcion LIKE ?';
     params.push(termDesc);
   }
-  
+
   // Ordenar por: resueltas primero, luego por score, luego por fecha
   query += `
     ORDER BY 
@@ -1343,9 +1375,9 @@ async function buscarIncidenciasRelacionadasInterno(criterios) {
       i.fecha_creacion DESC
     LIMIT 10
   `;
-  
+
   const [resultados] = await pool.execute(query, params);
-  
+
   // Formatear resultados
   return resultados.map(inc => ({
     id: inc.id,

@@ -19,10 +19,12 @@ import { catalogosService } from "@/services/catalogos.service";
 import { incidenciasService } from "@/services/incidencias.service";
 import { archivosService } from "@/services/archivos.service";
 import { IncidenciasRelacionadas } from "@/components/incidencia/IncidenciasRelacionadas";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CrearIncidencia = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -91,8 +93,37 @@ const CrearIncidencia = () => {
     enabled: tieneCriterios,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.titulo.trim()) newErrors.titulo = "El título es obligatorio";
+    else if (formData.titulo.length < 5) newErrors.titulo = "El título debe tener al menos 5 caracteres";
+
+    if (!formData.descripcion.trim()) newErrors.descripcion = "La descripción es obligatoria";
+    else if (formData.descripcion.length < 20) newErrors.descripcion = "La descripción debe tener al menos 20 caracteres para asegurar suficiente detalle";
+
+    if (!formData.area_id) newErrors.area_id = "El área es obligatoria";
+    if (!formData.tipo_incidencia_id) newErrors.tipo_incidencia_id = "El tipo de incidencia es obligatorio";
+    if (!formData.prioridad_id) newErrors.prioridad_id = "La prioridad es obligatoria";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      toast({
+        title: "Error de validación",
+        description: "Por favor, corrige los errores en el formulario antes de enviar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -182,8 +213,9 @@ const CrearIncidencia = () => {
                   placeholder="Ej: Fallo en sistema de rayos X"
                   value={formData.titulo}
                   onChange={(e) => handleChange("titulo", e.target.value)}
-                  required
+                  className={errors.titulo ? "border-destructive" : ""}
                 />
+                {errors.titulo && <p className="text-xs text-destructive">{errors.titulo}</p>}
               </div>
 
               <div className="space-y-2">
@@ -194,8 +226,9 @@ const CrearIncidencia = () => {
                   rows={6}
                   value={formData.descripcion}
                   onChange={(e) => handleChange("descripcion", e.target.value)}
-                  required
+                  className={errors.descripcion ? "border-destructive" : ""}
                 />
+                {errors.descripcion && <p className="text-xs text-destructive">{errors.descripcion}</p>}
                 <p className="text-xs text-muted-foreground">
                   Incluye: qué sucedió, cuándo comenzó, qué se ha intentado, impacto en el servicio
                 </p>
@@ -206,8 +239,8 @@ const CrearIncidencia = () => {
                   <Label htmlFor="area">Área *</Label>
                   <Select value={formData.area_id} onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, area_id: value, servicio_id: "" }));
-                  }} required>
-                    <SelectTrigger id="area">
+                  }}>
+                    <SelectTrigger id="area" className={errors.area_id ? "border-destructive" : ""}>
                       <SelectValue placeholder="Selecciona el área" />
                     </SelectTrigger>
                     <SelectContent>
@@ -218,12 +251,13 @@ const CrearIncidencia = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.area_id && <p className="text-xs text-destructive">{errors.area_id}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="servicio">Servicio específico</Label>
-                  <Select 
-                    value={formData.servicio_id} 
+                  <Select
+                    value={formData.servicio_id}
                     onValueChange={(value) => handleChange("servicio_id", value)}
                     disabled={!formData.area_id}
                   >
@@ -246,8 +280,8 @@ const CrearIncidencia = () => {
                   <Label htmlFor="tipo">Tipo de incidencia *</Label>
                   <Select value={formData.tipo_incidencia_id} onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, tipo_incidencia_id: value, subtipo_incidencia_id: "" }));
-                  }} required>
-                    <SelectTrigger id="tipo">
+                  }}>
+                    <SelectTrigger id="tipo" className={errors.tipo_incidencia_id ? "border-destructive" : ""}>
                       <SelectValue placeholder="Selecciona el tipo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -258,6 +292,7 @@ const CrearIncidencia = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.tipo_incidencia_id && <p className="text-xs text-destructive">{errors.tipo_incidencia_id}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -283,8 +318,8 @@ const CrearIncidencia = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="prioridad">Prioridad *</Label>
-                <Select value={formData.prioridad_id} onValueChange={(value) => handleChange("prioridad_id", value)} required>
-                  <SelectTrigger id="prioridad">
+                <Select value={formData.prioridad_id} onValueChange={(value) => handleChange("prioridad_id", value)}>
+                  <SelectTrigger id="prioridad" className={errors.prioridad_id ? "border-destructive" : ""}>
                     <SelectValue placeholder="Selecciona la prioridad" />
                   </SelectTrigger>
                   <SelectContent>
@@ -295,23 +330,27 @@ const CrearIncidencia = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.prioridad_id && <p className="text-xs text-destructive">{errors.prioridad_id}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="responsable">Responsable</Label>
-                <Select value={formData.responsable_id} onValueChange={(value) => handleChange("responsable_id", value)}>
-                  <SelectTrigger id="responsable">
-                    <SelectValue placeholder="Selecciona un responsable (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {usuarios.map((usuario) => (
-                      <SelectItem key={usuario.id} value={usuario.id.toString()}>
-                        {usuario.nombre} ({usuario.rol})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Solo ADMIN TI puede asignar responsables */}
+              {user?.rol === 'admin' && user?.tipo_admin === 'ti' && (
+                <div className="space-y-2">
+                  <Label htmlFor="responsable">Responsable</Label>
+                  <Select value={formData.responsable_id} onValueChange={(value) => handleChange("responsable_id", value)}>
+                    <SelectTrigger id="responsable">
+                      <SelectValue placeholder="Selecciona un responsable (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usuarios.map((usuario) => (
+                        <SelectItem key={usuario.id} value={usuario.id.toString()}>
+                          {usuario.nombre} ({usuario.rol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="pt-4">
                 <h3 className="text-lg font-semibold text-foreground mb-4">Ubicación / Contexto</h3>
