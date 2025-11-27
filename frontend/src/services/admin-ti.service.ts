@@ -70,7 +70,7 @@ export interface EstadisticasAsignaciones {
 
 export const adminTiService = {
   async asignarIncidencia(codigo: string, responsableId: number): Promise<void> {
-    await api.post(`/admin-ti/incidencias/${codigo}/asignar`, { responsable_id: responsableId });
+    await api.post(`/api/admin-ti/incidencias/${codigo}/asignar`, { responsable_id: responsableId });
   },
 
   async listarPendientes(limit?: number, offset?: number): Promise<{
@@ -84,16 +84,16 @@ export const adminTiService = {
     const params: any = {};
     if (limit) params.limit = limit;
     if (offset) params.offset = offset;
-    const response = await api.get('/admin-ti/incidencias/pendientes', { params });
+    const response = await api.get('/api/admin-ti/incidencias/pendientes', { params });
     return response.data;
   },
 
   async reasignar(codigo: string, responsableId: number): Promise<void> {
-    await api.patch(`/admin-ti/incidencias/${codigo}/reasignar`, { responsable_id: responsableId });
+    await api.patch(`/api/admin-ti/incidencias/${codigo}/reasignar`, { responsable_id: responsableId });
   },
 
   async obtenerEstadisticas(): Promise<EstadisticasAsignaciones> {
-    const response = await api.get('/admin-ti/estadisticas');
+    const response = await api.get('/api/admin-ti/estadisticas');
     return response.data.data;
   },
 };

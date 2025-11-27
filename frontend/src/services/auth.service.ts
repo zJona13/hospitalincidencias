@@ -25,12 +25,12 @@ export interface AuthResponse {
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post('/auth/login', credentials);
+    const response = await api.post('/api/auth/login', credentials);
     return response.data.data;
   },
 
   async getCurrentUser(): Promise<User> {
-    const response = await api.get('/auth/me');
+    const response = await api.get('/api/auth/me');
     return response.data.data;
   },
 

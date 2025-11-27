@@ -106,39 +106,39 @@ export interface FiltrosIncidencias {
 
 export const incidenciasService = {
   async listar(filtros?: FiltrosIncidencias): Promise<Incidencia[]> {
-    const response = await api.get('/incidencias', { params: filtros });
+    const response = await api.get('/api/incidencias', { params: filtros });
     return response.data.data;
   },
 
   async obtener(codigo: string): Promise<Incidencia> {
-    const response = await api.get(`/incidencias/${codigo}`);
+    const response = await api.get(`/api/incidencias/${codigo}`);
     return response.data.data;
   },
 
   async crear(data: CrearIncidenciaData): Promise<{ id: number; codigo: string; titulo: string }> {
-    const response = await api.post('/incidencias', data);
+    const response = await api.post('/api/incidencias', data);
     return response.data.data;
   },
 
   async actualizar(codigo: string, data: Partial<CrearIncidenciaData>): Promise<void> {
-    await api.put(`/incidencias/${codigo}`, data);
+    await api.put(`/api/incidencias/${codigo}`, data);
   },
 
   async cambiarEstado(codigo: string, estado: string): Promise<void> {
-    await api.patch(`/incidencias/${codigo}/estado`, { estado });
+    await api.patch(`/api/incidencias/${codigo}/estado`, { estado });
   },
 
   async cambiarPrioridad(codigo: string, prioridad_id: number): Promise<void> {
-    await api.patch(`/incidencias/${codigo}/prioridad`, { prioridad_id });
+    await api.patch(`/api/incidencias/${codigo}/prioridad`, { prioridad_id });
   },
 
   async reasignar(codigo: string, responsable_id: number): Promise<void> {
-    await api.patch(`/incidencias/${codigo}/reasignar`, { responsable_id });
+    await api.patch(`/api/incidencias/${codigo}/reasignar`, { responsable_id });
   },
 
   async misIncidencias(tipo: 'creadas' | 'asignadas' | 'todas' = 'todas', filtros?: Omit<FiltrosIncidencias, 'search'>): Promise<Incidencia[]> {
     const params = { tipo, ...filtros };
-    const response = await api.get('/incidencias/mis-incidencias', { params });
+    const response = await api.get('/api/incidencias/mis-incidencias', { params });
     return response.data.data;
   },
 
@@ -148,16 +148,16 @@ export const incidenciasService = {
     recursos_utilizados?: string;
     tiempo_invertido_minutos: number;
   }): Promise<void> {
-    await api.post(`/incidencias/${codigo}/resolver`, datosResolucion);
+    await api.post(`/api/incidencias/${codigo}/resolver`, datosResolucion);
   },
 
   async obtenerRelacionadas(codigo: string): Promise<IncidenciaRelacionada[]> {
-    const response = await api.get(`/incidencias/${codigo}/relacionadas`);
+    const response = await api.get(`/api/incidencias/${codigo}/relacionadas`);
     return response.data.data;
   },
 
   async buscarRelacionadas(criterios: CriteriosRelacionadas): Promise<IncidenciaRelacionada[]> {
-    const response = await api.get('/incidencias/relacionadas', { params: criterios });
+    const response = await api.get('/api/incidencias/relacionadas', { params: criterios });
     return response.data.data;
   },
 };

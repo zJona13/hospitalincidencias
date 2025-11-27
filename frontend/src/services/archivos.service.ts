@@ -15,7 +15,7 @@ export interface Archivo {
 
 export const archivosService = {
   async listar(codigo: string): Promise<Archivo[]> {
-    const response = await api.get(`/incidencias/${codigo}/archivos`);
+    const response = await api.get(`/api/incidencias/${codigo}/archivos`);
     return response.data.data;
   },
 
@@ -23,7 +23,7 @@ export const archivosService = {
     const formData = new FormData();
     formData.append('archivo', archivo);
     
-    const response = await api.post(`/incidencias/${codigo}/archivos`, formData, {
+    const response = await api.post(`/api/incidencias/${codigo}/archivos`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -32,7 +32,7 @@ export const archivosService = {
   },
 
   async descargar(id: number, nombre: string): Promise<void> {
-    const response = await api.get(`/incidencias/archivos/${id}/descargar`, {
+    const response = await api.get(`/api/incidencias/archivos/${id}/descargar`, {
       responseType: 'blob',
     });
     
@@ -47,7 +47,7 @@ export const archivosService = {
   },
 
   async eliminar(codigo: string, id: number): Promise<void> {
-    await api.delete(`/incidencias/archivos/${id}`);
+    await api.delete(`/api/incidencias/archivos/${id}`);
   },
 };
 

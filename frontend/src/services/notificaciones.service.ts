@@ -19,20 +19,20 @@ export const notificacionesService = {
     const params: any = {};
     if (leida !== undefined) params.leida = leida;
     if (tipo) params.tipo = tipo;
-    const response = await api.get('/notificaciones', { params });
+    const response = await api.get('/api/notificaciones', { params });
     return response.data.data;
   },
 
   async marcarLeida(id: number): Promise<void> {
-    await api.patch(`/notificaciones/${id}/leer`);
+    await api.patch(`/api/notificaciones/${id}/leer`);
   },
 
   async marcarTodasLeidas(): Promise<void> {
-    await api.patch('/notificaciones/marcar-todas');
+    await api.patch('/api/notificaciones/marcar-todas');
   },
 
   async contarNoLeidas(): Promise<number> {
-    const response = await api.get('/notificaciones/contar');
+    const response = await api.get('/api/notificaciones/contar');
     return response.data.data.total;
   },
 };

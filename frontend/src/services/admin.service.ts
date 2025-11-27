@@ -88,25 +88,25 @@ export const adminService = {
       if (areaId) params.area_id = areaId;
       if (rol) params.rol = rol;
       if (activo !== undefined) params.activo = activo;
-      const response = await api.get('/admin/usuarios', { params });
+      const response = await api.get('/api/admin/usuarios', { params });
       return response.data.data;
     },
     async obtener(id: number): Promise<Usuario> {
-      const response = await api.get(`/admin/usuarios/${id}`);
+      const response = await api.get(`/api/admin/usuarios/${id}`);
       return response.data.data;
     },
     async crear(data: CrearUsuarioData): Promise<Usuario> {
-      const response = await api.post('/admin/usuarios', data);
+      const response = await api.post('/api/admin/usuarios', data);
       return response.data.data;
     },
     async actualizar(id: number, data: Partial<CrearUsuarioData>): Promise<void> {
-      await api.put(`/admin/usuarios/${id}`, data);
+      await api.put(`/api/admin/usuarios/${id}`, data);
     },
     async cambiarPassword(id: number, password: string): Promise<void> {
-      await api.patch(`/admin/usuarios/${id}/password`, { password });
+      await api.patch(`/api/admin/usuarios/${id}/password`, { password });
     },
     async eliminar(id: number): Promise<void> {
-      await api.delete(`/admin/usuarios/${id}`);
+      await api.delete(`/api/admin/usuarios/${id}`);
     },
   },
 
@@ -116,22 +116,22 @@ export const adminService = {
       const params: any = {};
       if (activo !== undefined) params.activo = activo;
       if (search) params.search = search;
-      const response = await api.get('/admin/areas', { params });
+      const response = await api.get('/api/admin/areas', { params });
       return response.data.data;
     },
     async obtener(id: number): Promise<Area> {
-      const response = await api.get(`/admin/areas/${id}`);
+      const response = await api.get(`/api/admin/areas/${id}`);
       return response.data.data;
     },
     async crear(data: CrearAreaData): Promise<Area> {
-      const response = await api.post('/admin/areas', data);
+      const response = await api.post('/api/admin/areas', data);
       return response.data.data;
     },
     async actualizar(id: number, data: Partial<CrearAreaData & { activo?: boolean }>): Promise<void> {
-      await api.put(`/admin/areas/${id}`, data);
+      await api.put(`/api/admin/areas/${id}`, data);
     },
     async eliminar(id: number): Promise<void> {
-      await api.delete(`/admin/areas/${id}`);
+      await api.delete(`/api/admin/areas/${id}`);
     },
   },
 
@@ -140,22 +140,22 @@ export const adminService = {
     async listar(activo?: boolean): Promise<Prioridad[]> {
       const params: any = {};
       if (activo !== undefined) params.activo = activo;
-      const response = await api.get('/admin/prioridades', { params });
+      const response = await api.get('/api/admin/prioridades', { params });
       return response.data.data;
     },
     async obtener(id: number): Promise<Prioridad> {
-      const response = await api.get(`/admin/prioridades/${id}`);
+      const response = await api.get(`/api/admin/prioridades/${id}`);
       return response.data.data;
     },
     async crear(data: CrearPrioridadData): Promise<Prioridad> {
-      const response = await api.post('/admin/prioridades', data);
+      const response = await api.post('/api/admin/prioridades', data);
       return response.data.data;
     },
     async actualizar(id: number, data: Partial<CrearPrioridadData & { activo?: boolean }>): Promise<void> {
-      await api.put(`/admin/prioridades/${id}`, data);
+      await api.put(`/api/admin/prioridades/${id}`, data);
     },
     async eliminar(id: number): Promise<void> {
-      await api.delete(`/admin/prioridades/${id}`);
+      await api.delete(`/api/admin/prioridades/${id}`);
     },
   },
 
@@ -165,22 +165,22 @@ export const adminService = {
       const params: any = {};
       if (activo !== undefined) params.activo = activo;
       if (categoria) params.categoria = categoria;
-      const response = await api.get('/admin/tipos', { params });
+      const response = await api.get('/api/admin/tipos', { params });
       return response.data.data;
     },
     async obtener(id: number): Promise<Tipo> {
-      const response = await api.get(`/admin/tipos/${id}`);
+      const response = await api.get(`/api/admin/tipos/${id}`);
       return response.data.data;
     },
     async crear(data: CrearTipoData): Promise<Tipo> {
-      const response = await api.post('/admin/tipos', data);
+      const response = await api.post('/api/admin/tipos', data);
       return response.data.data;
     },
     async actualizar(id: number, data: Partial<CrearTipoData & { activo?: boolean }>): Promise<void> {
-      await api.put(`/admin/tipos/${id}`, data);
+      await api.put(`/api/admin/tipos/${id}`, data);
     },
     async eliminar(id: number): Promise<void> {
-      await api.delete(`/admin/tipos/${id}`);
+      await api.delete(`/api/admin/tipos/${id}`);
     },
   },
 };

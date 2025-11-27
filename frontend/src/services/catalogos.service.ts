@@ -49,29 +49,29 @@ export interface UsuarioCatalogo {
 
 export const catalogosService = {
   async getAreas(): Promise<Area[]> {
-    const response = await api.get('/catalogos/areas');
+    const response = await api.get('/api/catalogos/areas');
     return response.data.data;
   },
 
   async getServicios(areaId?: number): Promise<Servicio[]> {
     const params = areaId ? { area_id: areaId } : {};
-    const response = await api.get('/catalogos/servicios', { params });
+    const response = await api.get('/api/catalogos/servicios', { params });
     return response.data.data;
   },
 
   async getTipos(): Promise<Tipo[]> {
-    const response = await api.get('/catalogos/tipos');
+    const response = await api.get('/api/catalogos/tipos');
     return response.data.data;
   },
 
   async getSubtipos(tipoId?: number): Promise<Subtipo[]> {
     const params = tipoId ? { tipo_id: tipoId } : {};
-    const response = await api.get('/catalogos/subtipos', { params });
+    const response = await api.get('/api/catalogos/subtipos', { params });
     return response.data.data;
   },
 
   async getPrioridades(): Promise<Prioridad[]> {
-    const response = await api.get('/catalogos/prioridades');
+    const response = await api.get('/api/catalogos/prioridades');
     return response.data.data;
   },
 
@@ -79,7 +79,7 @@ export const catalogosService = {
     const params: any = {};
     if (areaId) params.area_id = areaId;
     if (rol) params.rol = rol;
-    const response = await api.get('/catalogos/usuarios', { params });
+    const response = await api.get('/api/catalogos/usuarios', { params });
     return response.data.data;
   },
 };

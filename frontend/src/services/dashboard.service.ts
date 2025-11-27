@@ -26,17 +26,17 @@ export const dashboardService = {
     const params: any = {};
     if (fechaInicio) params.fecha_inicio = fechaInicio;
     if (fechaFin) params.fecha_fin = fechaFin;
-    const response = await api.get('/dashboard/estadisticas', { params });
+    const response = await api.get('/api/dashboard/estadisticas', { params });
     return response.data.data;
   },
 
   async getTendencias(dias: number = 7): Promise<Tendencia[]> {
-    const response = await api.get('/dashboard/tendencias', { params: { dias } });
+    const response = await api.get('/api/dashboard/tendencias', { params: { dias } });
     return response.data.data;
   },
 
   async getDistribuciones(tipo: 'tipo' | 'prioridad' | 'estado'): Promise<Distribucion[]> {
-    const response = await api.get('/dashboard/distribuciones', { params: { tipo } });
+    const response = await api.get('/api/dashboard/distribuciones', { params: { tipo } });
     return response.data.data;
   },
 };

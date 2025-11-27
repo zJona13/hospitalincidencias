@@ -16,7 +16,7 @@ export interface EventoHistorial {
 
 export const historialService = {
   async obtener(codigo: string): Promise<EventoHistorial[]> {
-    const response = await api.get(`/incidencias/${codigo}/historial`);
+    const response = await api.get(`/api/incidencias/${codigo}/historial`);
     return response.data.data;
   },
 };

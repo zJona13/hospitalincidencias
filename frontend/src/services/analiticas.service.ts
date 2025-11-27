@@ -59,12 +59,12 @@ export const analiticasService = {
     const params: any = { periodo };
     if (fechaInicio) params.fecha_inicio = fechaInicio;
     if (recalcular) params.recalcular = 'true';
-    const response = await api.get('/analiticas/predicciones', { params });
+    const response = await api.get('/api/analiticas/predicciones', { params });
     return response.data.data;
   },
 
   async obtenerPrediccionDetalle(id: number): Promise<Prediccion> {
-    const response = await api.get(`/analiticas/predicciones/${id}`);
+    const response = await api.get(`/api/analiticas/predicciones/${id}`);
     return response.data.data;
   },
 
@@ -72,7 +72,7 @@ export const analiticasService = {
     const params: any = { periodo };
     if (tipo_incidencia_id) params.tipo_incidencia_id = tipo_incidencia_id;
     if (area_id) params.area_id = area_id;
-    const response = await api.get('/analiticas/impacto', { params });
+    const response = await api.get('/api/analiticas/impacto', { params });
     return response.data.data;
   },
 
@@ -82,12 +82,12 @@ export const analiticasService = {
     area_id?: number;
     tipo_incidencia_id?: number;
   }): Promise<ReporteAvanzado> {
-    const response = await api.get('/analiticas/reportes-avanzados', { params: filtros });
+    const response = await api.get('/api/analiticas/reportes-avanzados', { params: filtros });
     return response.data.data;
   },
 
   async obtenerMetricasDirector(periodo: 'mensual' | 'trimestral' | 'anual' = 'mensual'): Promise<any> {
-    const response = await api.get('/analiticas/metricas-director', { params: { periodo } });
+    const response = await api.get('/api/analiticas/metricas-director', { params: { periodo } });
     return response.data.data;
   },
 };

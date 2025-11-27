@@ -431,7 +431,7 @@ cp .env.example .env  # Si existe, o crear manualmente
 **Configurar `frontend/.env`:**
 
 ```env
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:3000/
 ```
 
 ### 6. Iniciar los Servidores
