@@ -56,8 +56,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
-    // Usar window.location en lugar de navigate porque estamos fuera del Router
-    window.location.href = '/login';
+    // Usar replace para evitar que el usuario pueda volver atrás
+    window.location.replace('/login');
   };
 
   const value: AuthContextType = {
