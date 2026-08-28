@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
+import RecuperarPassword from "./pages/RecuperarPassword";
+import RestablecerPassword from "./pages/RestablecerPassword";
 import Dashboard from "./pages/Dashboard";
 import Incidencias from "./pages/Incidencias";
 import MisIncidencias from "./pages/MisIncidencias";
@@ -33,7 +35,9 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
-        
+        <Route path="/recuperar" element={<RecuperarPassword />} />
+        <Route path="/restablecer/:token" element={<RestablecerPassword />} />
+
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/incidencias" element={<Incidencias />} />

@@ -408,6 +408,24 @@ CREATE TABLE predicciones_incidencias (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- TABLA: tokens_recuperacion
+-- Enlaces de restablecimiento de contrasena (recuperacion)
+-- =====================================================
+CREATE TABLE tokens_recuperacion (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT UNSIGNED NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    fecha_expiracion DATETIME NOT NULL,
+    fecha_uso DATETIME NULL,
+    ip_solicitud VARCHAR(45) NULL,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_token_hash (token_hash),
+    INDEX idx_usuario (usuario_id),
+    INDEX idx_expiracion (fecha_expiracion),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- FIN DEL SCRIPT
 -- =====================================================
 

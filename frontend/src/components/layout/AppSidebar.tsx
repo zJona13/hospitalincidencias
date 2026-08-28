@@ -80,7 +80,7 @@ export function AppSidebar() {
           </div>
           {open && (
             <div className="flex flex-col">
-              <span className="font-semibold text-sm text-sidebar-foreground">Hospital General</span>
+              <span className="font-semibold text-sm text-sidebar-foreground">Hospital Luis Heysen</span>
               <span className="text-xs text-muted-foreground">Gestión de Incidencias</span>
             </div>
           )}

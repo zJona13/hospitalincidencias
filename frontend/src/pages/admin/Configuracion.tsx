@@ -28,7 +28,7 @@ export default function Configuracion() {
       cambios_estado: true,
     },
     sistema: {
-      nombre_hospital: "Hospital General",
+      nombre_hospital: "Hospital Luis Heysen Incháustegui",
       email_contacto: "contacto@hospital.com",
       telefono: "+51 123 456 789",
       direccion: "Av. Principal 123",

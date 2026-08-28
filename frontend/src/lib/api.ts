@@ -39,7 +39,7 @@ api.interceptors.response.use(
         if (currentPath !== '/login' && currentPath !== '/') {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.replace('/login');
+          window.location.replace('/login?expirada=1');
         }
       }
     }

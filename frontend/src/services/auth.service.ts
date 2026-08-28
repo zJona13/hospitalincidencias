@@ -34,6 +34,23 @@ export const authService = {
     return response.data.data;
   },
 
+  // Solicita el enlace de restablecimiento. Responde igual exista o no la cuenta.
+  async solicitarRecuperacion(email: string): Promise<string> {
+    const response = await api.post('/api/auth/recuperar', { email });
+    return response.data.message;
+  },
+
+  // Verifica que el enlace siga vigente; devuelve el correo enmascarado.
+  async verificarTokenRecuperacion(token: string): Promise<{ email: string }> {
+    const response = await api.get(`/api/auth/recuperar/${token}`);
+    return response.data.data;
+  },
+
+  async restablecerPassword(token: string, password: string): Promise<string> {
+    const response = await api.post('/api/auth/restablecer', { token, password });
+    return response.data.message;
+  },
+
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
